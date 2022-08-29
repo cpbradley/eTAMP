@@ -24,7 +24,7 @@ from etamp.pddlstream.utils import read, INF, get_file_path, find_unique
 from etamp.p_uct2 import PlannerUCT
 from etamp.tree_node2 import ExtendedNode
 from etamp.env_sk_branch import SkeletonEnv
-from build_scenario import PlanningScenario
+from .build_scenario import PlanningScenario
 
 
 def get_fixed(robot, movable):

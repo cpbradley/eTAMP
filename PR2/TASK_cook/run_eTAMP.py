@@ -63,7 +63,7 @@ def exp():
 
 if __name__ == '__main__':
     list_report_vnts = []
-    for i in range(100):
+    for i in range(1):
         print(f'exp {i} -------------------------------------------------------------------')
         result_vnts = exp()
         list_report_vnts.append(result_vnts)

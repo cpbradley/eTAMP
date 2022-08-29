@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import numpy as np
+import os
 
 import time
 from utils.pybullet_tools.kuka_primitives3 import BodyPose, BodyConf, Register

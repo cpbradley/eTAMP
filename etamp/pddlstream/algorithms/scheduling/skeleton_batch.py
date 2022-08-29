@@ -796,6 +796,7 @@ def log_fullPlan(op_plan, text_plan_path, exe_plan_path):
         f.write(';{}\n'.format(now.strftime("%H:%M:%S  %d/%m")))
 
     with open(exe_plan_path, 'wb') as f:
+        print('pddlstream')
         pickle.dump(optms_plan, f)
         print('EXE_plan is saved to {}'.format(exe_plan_path))
 
@@ -974,6 +975,7 @@ def log_save_opPlan(op_plan, text_plan_path, exe_plan_path):
         f.write(';{}\n'.format(now.strftime("%H:%M:%S  %d/%m")))
 
     with open(exe_plan_path, 'wb') as f:
+        print('pddlstream')
         pickle.dump(op_plan, f)
         print('EXE_plan is saved to {}'.format(exe_plan_path))
 

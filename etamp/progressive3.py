@@ -130,7 +130,7 @@ def solve_progressive(problem, constraints=PlanConstraints(), stream_info={}, ac
 
 
 def solve_progressive2(problem, constraints=PlanConstraints(), max_iterations=INF, initial_level=0, level_step=1,
-                       unit_costs=False, unit_efforts=False, num_optms_init=300, target_sk=100):
+                       unit_costs=False, unit_efforts=False, num_optms_init=300, target_sk=100, domain_file=None, stream_file=None):
     num_iterations = search_time = sample_time = 0
     level_limit = initial_level
 
@@ -162,7 +162,11 @@ def solve_progressive2(problem, constraints=PlanConstraints(), max_iterations=IN
         print('\nIteration: {} | Level: {} | Inits: {}'.format(num_iterations, level_limit, len(problem.init)))
 
         if len(problem.init) > num_optms_init:
-            sk_batch = TopkSkeleton('pddl/domain.pddl', 'pddl/stream.pddl',
+            if not domain_file:
+                domain_file = 'pddl/domain.pddl'
+            if not stream_file:
+                stream_file = 'pddl/stream.pddl'
+            sk_batch = TopkSkeleton(domain_file, stream_file,
                                     original_init, original_goal, optms_results, optms_init,
                                     target_num=target_sk)
             if sk_batch.num_ap >= target_sk:
