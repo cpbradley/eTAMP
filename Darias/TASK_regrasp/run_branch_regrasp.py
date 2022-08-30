@@ -232,7 +232,7 @@ def main(display=True, teleport=False, use_bo=1, visualization=1, new_problem=0,
                                       num_optms_init=80, target_sk=20)
         op_plan = sk_batch.generate_operatorPlan(3)  # 3
     else:
-        with open('C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
+        with open('temp/C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
             op_plan = pk.load(f)
 
     e_root = ExtendedNode()

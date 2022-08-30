@@ -25,7 +25,7 @@ from etamp.pddlstream.utils import read, INF, get_file_path, find_unique
 from etamp.p_uct2 import PlannerUCT
 from etamp.tree_node2 import ExtendedNode
 from etamp.env_sk_branch import SkeletonEnv
-from build_scenario import Scene_hanoi
+from .build_scenario import Scene_hanoi
 
 
 def get_fixed(robot, movable):
@@ -284,7 +284,7 @@ def main(new_problem=1):
                                       num_optms_init=800, target_sk=1)
         op_plan = sk_batch.generate_operatorPlan(0)  # 6
     else:
-        with open('C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
+        with open('temp/C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
             op_plan = pk.load(f)
 
     e_root = ExtendedNode()

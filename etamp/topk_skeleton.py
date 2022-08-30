@@ -1019,7 +1019,7 @@ class TopkSkeleton(object):
 
         for i in range(50):
             """Raw solutions"""
-            raw_solutions = run_pddl_planner(self.original_domain, self.optms_problem, num_raw_target, 'A_actionPlans',
+            raw_solutions = run_pddl_planner(self.original_domain, self.optms_problem, num_raw_target, 'temp/A_actionPlans',
                                              'A_ap', '')
             num_solution = len(raw_solutions)
             if num_solution < target_num or num_solution == num_raw_last:
@@ -1061,7 +1061,7 @@ class TopkSkeleton(object):
                                                                      self.optms_results, ap_file,
                                                                      self.stream_file)
 
-        fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'B_fullPlans',
+        fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'temp/B_fullPlans',
                                     'B_fp', 'Skeleton_SN = ' + str(pointer))
         if not fp_files:
             print('Failed: in creating fp_files. ap_file = ' + ap_file)
@@ -1076,7 +1076,7 @@ class TopkSkeleton(object):
 
         op_domain, op_problem = reorder_domain_problem(copy(fp_domain), copy(fp_problem), full_list_stream,
                                                        full_list_action)
-        op_files = run_pddl_planner(op_domain, op_problem, 1, 'C_operatorPlans',
+        op_files = run_pddl_planner(op_domain, op_problem, 1, 'temp/C_operatorPlans',
                                     'C_op', 'Skeleton_SN = ' + str(pointer))
         if not fp_files:
             print('Failed: in creating op_files.')

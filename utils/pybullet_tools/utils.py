@@ -336,23 +336,27 @@ def get_urdf_flags(cache=False):
 
 def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
     # fixed_base=False implies infinite base mass
+    if os.path.isabs(filename):
+        full_filename = filename
+    else:
+        full_filename = os.getcwd() + '/' + filename
     with LockRenderer():
         if filename.endswith('.urdf'):
             flags = get_urdf_flags(**kwargs)
-            body = p.loadURDF(filename, useFixedBase=fixed_base, flags=flags,
+            body = p.loadURDF(full_filename, useFixedBase=fixed_base, flags=flags,
                               globalScaling=scale, physicsClientId=CLIENT)
         elif filename.endswith('.sdf'):
-            body = p.loadSDF(filename, physicsClientId=CLIENT)
+            body = p.loadSDF(full_filename, physicsClientId=CLIENT)
         elif filename.endswith('.xml'):
-            body = p.loadMJCF(filename, physicsClientId=CLIENT)
+            body = p.loadMJCF(full_filename, physicsClientId=CLIENT)
         elif filename.endswith('.bullet'):
-            body = p.loadBullet(filename, physicsClientId=CLIENT)
+            body = p.loadBullet(full_filename, physicsClientId=CLIENT)
         elif filename.endswith('.obj'):
             # TODO: fixed_base => mass = 0?
-            body = create_obj(filename, scale=scale, **kwargs)
+            body = create_obj(full_filename, scale=scale, **kwargs)
         else:
-            raise ValueError(filename)
-    INFO_FROM_BODY[CLIENT, body] = ModelInfo(None, filename, fixed_base, scale)
+            raise ValueError(full_filename)
+    INFO_FROM_BODY[CLIENT, body] = ModelInfo(None, full_filename, fixed_base, scale)
     return body
 
 

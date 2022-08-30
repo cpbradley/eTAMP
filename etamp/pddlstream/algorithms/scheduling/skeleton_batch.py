@@ -1107,7 +1107,7 @@ class SkeletonBatch(object):
                                                                      self.optms_results, ap_file,
                                                                      self.stream_file)
 
-        fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'B_fullPlans',
+        fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'temp/B_fullPlans',
                                     'B_fp', 'Skeleton_SN = ' + str(pointer))
         if not fp_files:
             print('Failed: in creating fp_files. ap_file = ' + ap_file)
@@ -1122,7 +1122,7 @@ class SkeletonBatch(object):
 
         op_domain, op_problem = reorder_domain_problem(copy(fp_domain), copy(fp_problem), full_list_stream,
                                                        full_list_action)
-        op_files = run_pddl_planner(op_domain, op_problem, 1, 'C_operatorPlans',
+        op_files = run_pddl_planner(op_domain, op_problem, 1, 'temp/C_operatorPlans',
                                     'C_op', 'Skeleton_SN = ' + str(pointer))
         if not fp_files:
             print('Failed: in creating op_files.')

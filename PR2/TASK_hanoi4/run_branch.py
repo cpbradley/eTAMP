@@ -277,7 +277,7 @@ def main(new_problem=1):
                                       num_optms_init=800, target_sk=1)
         op_plan = sk_batch.generate_operatorPlan(0)  # 6
     else:
-        with open('C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
+        with open('temp/C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
             op_plan = pk.load(f)
 
     e_root = ExtendedNode()

@@ -231,7 +231,7 @@ def main(display=True, teleport=False):
                                       num_optms_init=80, target_sk=50)
         op_plan = sk_batch.generate_operatorPlan(40)  # c1-39
     else:
-        with open('C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
+        with open('temp/C_operatorPlans/C_op_sas.1.pk', 'rb') as f:
             op_plan = pk.load(f)
 
     e_root = ExtendedNode()

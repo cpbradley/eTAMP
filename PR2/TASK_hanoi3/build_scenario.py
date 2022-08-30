@@ -10,7 +10,6 @@ from utils.pybullet_tools.utils import WorldSaver, connect, dump_world, get_pose
     load_pybullet, step_simulation, Euler, get_links, get_link_info, get_movable_joints, set_joint_positions, \
     set_camera, get_center_extent, tform_from_pose, attach_viewcone, LockRenderer, load_model, set_point, enable_gravity
 
-from utils.pybullet_tools.body_utils import draw_frame
 from utils.pybullet_tools.pr2_utils import set_arm_conf, REST_LEFT_ARM, open_arm, \
     close_arm, get_carry_conf, arm_conf, get_other_arm, set_group_conf, PR2_URDF, DRAKE_PR2_URDF, create_gripper
 
@@ -37,6 +36,7 @@ class Scene_hanoi(object):
 
                 mass = 1
 
+                import os
                 self.bd_body = {
                     "floor": load_pybullet("../scenario_description/plane.urdf", fixed_base=True),
                     "table": load_pybullet("../scenario_description/hanoi/table_narrow.urdf", fixed_base=True),
@@ -147,6 +147,11 @@ class Scene_hanoi(object):
 
 
 #######################################################
+
+class PlanningScenario(Scene_hanoi):
+    def __init__(self) -> None:
+        super().__init__()
+
 
 def display_scenario():
     connect(use_gui=True)
