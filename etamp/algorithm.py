@@ -95,7 +95,7 @@ def parse_sequential_domain(domain_pddl, action_info={}):
 def parse_problem(problem,  constraints=None, unit_costs=False, unit_efforts=False):
     # TODO: just return the problem if already written programmatically
     # reset_globals() # Prevents use of satisfaction.py
-    domain_pddl, stream_pddl, init, goal,stream_info, action_info = problem
+    domain_pddl, stream_pddl, init, goal, stream_info, action_info = problem
     # domain = parse_domain(domain_pddl, action_info)
     domain = parse_sequential_domain(domain_pddl, action_info)
     # domain = domain_pddl

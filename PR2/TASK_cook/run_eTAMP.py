@@ -18,6 +18,8 @@ def exp():
 
     st = time.time()
 
+    # print(pddlstream_problem)
+    # assert False
     sk_batch = solve_progressive2(pddlstream_problem,
                                   num_optms_init=80, target_sk=50)
 
