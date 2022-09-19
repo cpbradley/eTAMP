@@ -1,5 +1,5 @@
 (define (domain pr2-tamp)
-  (:requirements :strips :equality :action-costs)
+  (:requirements :strips :equality :action-costs :typing)
   (:types arm wuti grasp config pose trajectory)
   (:predicates
     (IsArm ?a - arm)

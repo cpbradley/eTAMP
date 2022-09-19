@@ -2227,6 +2227,9 @@ def clone_world(client=None, exclude=[]):
 
 def get_collision_data(body, link=BASE_LINK):
     # TODO: try catch
+    # print(body)
+    # print(link)
+    # assert False
     return [CollisionShapeData(*tup) for tup in p.getCollisionShapeData(body, link, physicsClientId=CLIENT)]
 
 

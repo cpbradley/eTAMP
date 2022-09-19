@@ -1,7 +1,7 @@
-;19:17:54 25/08
+;20:00:14 13/09
 
 (define (domain pr2-tamp)
-   (:requirements :strips :equality :action-costs)
+   (:requirements :strips :equality :action-costs :typing)
 
    (:types
           arm wuti grasp config pose trajectory

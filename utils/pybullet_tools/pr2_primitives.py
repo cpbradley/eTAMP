@@ -972,6 +972,11 @@ class sdg_sample_place(object):
         self.msg_yg = -1  # Collision distance
         self.msg_bi = False
 
+        # print(input_tuple)
+        # print(seed)
+        # body = input_tuple
+        # surface = seed
+        # seed = None
         body, surface = input_tuple
         others = list(set(self.all_bodies) - {body, surface})
         """1) Generation"""
@@ -1057,7 +1062,9 @@ class sdg_sample_grasp(object):
 
     def search(self, input_tuple, seed=None):
         """return the ee_frame wrt the measure_frame of the object"""
+        # print(input_tuple)
         body, = input_tuple  # grasp_dir defined in ellipsoid_frame of the body
+        # body = input_tuple  # grasp_dir defined in ellipsoid_frame of the body
 
         grasps = []
 
