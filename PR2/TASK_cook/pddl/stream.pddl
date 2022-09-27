@@ -20,6 +20,7 @@
   (:stream plan-base-motion
     :inputs (?q1 - config ?q2 - config)
     :domain (and (IsBConf ?q1) (IsBConf ?q2))
+    :fluents (AtPose) ; AtGrasp
     :outputs (?t - trajectory)
     :certified (BaseMotion ?q1 ?t ?q2)
   )

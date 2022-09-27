@@ -700,6 +700,8 @@ class sdg_ik_arm(object):
         grasp_conf = pr2_inverse_kinematics(self.robot, arm, gripper_pose,
                                             custom_limits=self.custom_limits)  # , upper_limits=USE_CURRENT)
         # nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+        if any(pairwise_collision(self.robot, b) for b in obstacles):
+            print("ALERT ALERT IK COLLISION")
         if (grasp_conf is None) or any(pairwise_collision(self.robot, b) for b in obstacles):  # [obj]
             # print('Grasp IK failure', grasp_conf)
             # if grasp_conf is not None:
@@ -972,11 +974,6 @@ class sdg_sample_place(object):
         self.msg_yg = -1  # Collision distance
         self.msg_bi = False
 
-        # print(input_tuple)
-        # print(seed)
-        # body = input_tuple
-        # surface = seed
-        # seed = None
         body, surface = input_tuple
         others = list(set(self.all_bodies) - {body, surface})
         """1) Generation"""
@@ -1203,11 +1200,14 @@ class sdg_ir_ik_grasp(object):
             try:
                 ir_outputs = next(ir_generator)
             except StopIteration:
+                # print('IK failed stop iteration')
                 return None
             if ir_outputs is None:
+                # print('No IR')
                 continue
             ik_outputs = self.ik_fn(input_tuple + ir_outputs, seed)
             if ik_outputs is None:
+                # print('No IK')
                 continue
             # print('IK attempts:', attempts)
             result = ir_outputs + ik_outputs
@@ -1234,7 +1234,8 @@ class sdg_motion_base_joint(object):
 
         self.saver = BodySaver(self.robot)
 
-    def search(self, input_tuple, seed=None):
+    def search(self, input_tuple, seed=None, fluents=None):
+        print(fluents)
         bq1, bq2 = input_tuple
         self.saver.restore()
         bq1.assign()
@@ -1263,7 +1264,7 @@ class sdg_motion_base_joint(object):
             return (cmd,)
         return None
 
-    def __call__(self, input_tuple, seed=None):
-        return self.search(input_tuple, seed=None)
+    def __call__(self, input_tuple, seed=None, fluents=None):
+        return self.search(input_tuple, seed=None, fluents=fluents)
 
 #######################################################
