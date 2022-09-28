@@ -13,6 +13,7 @@ from .decision_sampler import DecisionInfo, SamplerContinuous, SamplerDiscrete, 
 from .constraint_graph import Constraint
 from collections import defaultdict
 import networkx as nx
+import time
 
 from BO.bo_one_piece import suggest_from_MCTS
 
@@ -94,6 +95,7 @@ class SkeletonEnv(object):
         self.decision_steps = []  # wrt. op_plan
         self.action_steps = []
         self.scene_reset_fn = scn.reset
+        self.data = defaultdict(list)
 
         self.bd_body = scn.bd_body
         self.scn = scn
@@ -579,6 +581,31 @@ class SkeletonEnv(object):
                 self._extend_digraph(collision_obj, digraph, self.op_plan.index(stream))
 
         return digraph, sdg_msg
+    
+    def log_statistics(self, name, input_objects, output_objects, fluent_objects, elapsed_time, success):
+        if success:
+            datum = {}
+            datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
+            datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
+            if output_objects:
+                datum['outputs'] = [obj.value if isinstance(obj, Object) else obj for obj in output_objects]
+            else:
+                datum['outputs'] = []
+
+            datum['outcome'] = 1
+            datum['costs'] = [elapsed_time, 0.0]
+            datum['label'] = [datum['outcome']] + datum['costs']
+
+        if not success:
+            datum = {}
+            datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
+            datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
+            datum['outputs'] = []
+            datum['outcome'] = 0
+            datum['costs'] = [0.0, elapsed_time]
+            datum['label'] = [datum['outcome']] + datum['costs']
+        
+        self.data[name].append(datum)
 
     def _apply_stream(self, stream, mapping, seed=None):
         """
@@ -587,9 +614,19 @@ class SkeletonEnv(object):
         """
 
         input_tuple = get_stream_inputs(stream, mapping)
+        fluent_list = []
+
+        for bodysaver in self.scn.saved_world.body_savers:
+            pose = bodysaver.pose_saver.pose
+            body = bodysaver.body
+            fluent_list.append(('AtPose', body, pose))
+        fluent_tuple = tuple(fluent_list)
 
         seed_gen_fn = self.get_op_info(stream).seed_gen_fn
+
+        now = time.time()
         output_tuple = seed_gen_fn(input_tuple=input_tuple, seed=seed)  # tuple, can be None
+        elapsed_time = time.time() - now
 
         if stream.name == 'plan-free-motion':
             if isinstance(stream.inputs[0], EXE_OptimisticObject):
@@ -602,10 +639,13 @@ class SkeletonEnv(object):
                 self.failure_log[stream.name] = 1
             else:
                 self.failure_log[stream.name] += 1
+            self.log_statistics(stream.name, input_tuple, output_tuple, fluent_tuple, elapsed_time, False)
             return None, digraph, sdg_msg
 
         old_objects = stream.outputs  # tuple
         new_objects = None
+        self.log_statistics(stream.name, input_tuple, output_tuple, fluent_tuple, elapsed_time, True)
+
         if output_tuple:
             new_objects = tuple(EXE_Object(o.pddl, v) for o, v in zip(old_objects, output_tuple))
 
