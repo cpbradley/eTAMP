@@ -73,10 +73,11 @@ class EXE_Action(object):
 
 
 class EXE_Stream(object):
-    def __init__(self, name, inputs, outputs):
+    def __init__(self, name, inputs, outputs, fluents=[]):
         self.name = name
         self.inputs = inputs
         self.outputs = outputs
+        self.fluents = fluents
 
     def __iter__(self):
         for o in [self.name, self.inputs, self.outputs]:
@@ -130,8 +131,9 @@ def remap_stream_args(stream, mapping, all_para=False):
 
     new_inputs = tuple(map(mapping_fn, stream.inputs))
     new_outputs = tuple(map(mapping_fn, stream.outputs))
+    new_fluents = tuple(map(mapping_fn, stream.fluents))
 
-    return EXE_Stream(stream.name, new_inputs, new_outputs)
+    return EXE_Stream(stream.name, new_inputs, new_outputs, fluents=new_fluents)
 
 
 def get_original_name(propo_name):
@@ -727,6 +729,33 @@ def extract_stream_action_plan(fp_path, propo_to_stream):
             action_plan.append(pAction(original_name, full_args, pa_info))
     return stream_plan, action_plan
 
+def fill_in_fluents(op_plan, init_facts):
+    facts = set(copy(init_facts))
+    import pddl
+    from etamp.pddlstream.algorithms.downward import fact_from_fd
+
+    for op in op_plan:
+        if isinstance(op, StreamResult):
+            fluents = op.instance.external.fluents
+
+            fluent_facts = list(map(fact_from_fd, filter(
+                lambda f: isinstance(f, pddl.Atom) and (f.predicate in fluents), facts)))
+            op.instance.fluent_facts = fluent_facts
+
+
+
+        if isinstance(op, pAction):
+            for cond, addfact in op.pa_info.propo_action.add_effects:
+                facts.add(addfact)
+            for cond, delfact in op.pa_info.propo_action.del_effects:
+                bad_fact = None
+                for fact in facts:
+                    if fact.predicate == delfact.predicate and fact.args == delfact.args:
+                        bad_fact = fact
+                        break
+                if bad_fact:
+                    facts.remove(bad_fact)
+
 
 def build_op_plan(streams_for_step, list_action, propo_to_stream, propo_to_action):
     action_plan = []
@@ -828,11 +857,12 @@ def log_fullPlan(op_plan, text_plan_path, exe_plan_path):
                 name = op.external.name
                 inputs = op.instance.input_objects
                 outputs = op.output_objects
+                fluents = op.instance.fluent_facts
                 f.write('({} {} -> {})\n'.format(name,
                                                  ' '.join(str(o) for o in inputs),
                                                  ' '.join(str(o) for o in outputs)))
                 optms_plan.append(EXE_Stream(name, tuple(o.get_EXE() for o in inputs),
-                                             tuple(o.get_EXE() for o in outputs)))
+                                             tuple(o.get_EXE() for o in outputs), fluents=tuple(o.get_EXE() for o in fluents)))
                 # exe_plan.append(EXE_Stream(name, inputs, outputs))
             if isinstance(op, pAction):
                 name = op.name
@@ -889,8 +919,14 @@ def postprocess_opPlan(raw_plan):
             name = op.external.name
             inputs = op.instance.input_objects
             outputs = op.output_objects
+            fluents = op.instance.fluent_facts
+            exe_fluents = []
+            for fluent in fluents:
+                exe_fluents.append(tuple(o.get_EXE() if type(o) is not str else o for o in fluent))
+
             op_plan.append(EXE_Stream(name, tuple(o.get_EXE() for o in inputs),
-                                      tuple(o.get_EXE() for o in outputs)))
+                                      tuple(o.get_EXE() for o in outputs),
+                                      fluents=tuple(exe_fluents)))
         if isinstance(op, pAction):
             name = op.name
             parameters = op.args
@@ -1088,6 +1124,7 @@ class TopkSkeleton(object):
         """Text plan -> Object plan"""
         propo_to_action = get_inst_action_mapping()
         op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
+        fill_in_fluents(op_plan0, self.original_init)
 
         plan_description_path = op_path + '.txt'
         exe_plan_path = op_path + '.pk'

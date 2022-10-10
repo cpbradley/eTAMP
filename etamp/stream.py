@@ -376,6 +376,7 @@ class Stream(External):
         super(Stream, self).__init__(name, info, inputs, domain)
         self.outputs = tuple(outputs)
         self.certified = tuple(certified)
+        self.fluents = fluents
         self.constants.update(a for i in certified for a in get_args(i) if not is_parameter(a))
 
         for p, c in Counter(self.outputs).items():

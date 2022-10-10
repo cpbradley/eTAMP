@@ -70,7 +70,25 @@ def get_stream_inputs(stream, mapping):
 
     new_inputs = tuple(map(mapping_fn, stream.inputs))
     input_tuple = tuple(obj.value for obj in new_inputs)
+
     return input_tuple
+
+def get_stream_fluents(stream, mapping):
+    def mapping_fn(o):
+        if is_active_arg(o):
+            t = []
+            for i in mapping.items():
+                t.append(i)
+
+            return mapping[o]
+        else:
+            return o
+
+    new_fluents = []
+    for fluent in stream.fluents:
+        new_fluents.append(tuple(map(mapping_fn, fluent)))
+
+    return tuple(new_fluents)
 
 
 def pre_dict_decision(node):
@@ -594,6 +612,7 @@ class SkeletonEnv(object):
 
             datum['outcome'] = 1
             datum['costs'] = [elapsed_time, 0.0]
+            datum['motion_cost'] = [0.0]
             datum['label'] = [datum['outcome']] + datum['costs']
 
         if not success:
@@ -603,6 +622,7 @@ class SkeletonEnv(object):
             datum['outputs'] = []
             datum['outcome'] = 0
             datum['costs'] = [0.0, elapsed_time]
+            datum['motion_cost'] = [0.0]
             datum['label'] = [datum['outcome']] + datum['costs']
         
         self.data[name].append(datum)
@@ -616,11 +636,13 @@ class SkeletonEnv(object):
         input_tuple = get_stream_inputs(stream, mapping)
         fluent_list = []
 
-        for bodysaver in self.scn.saved_world.body_savers:
-            pose = bodysaver.pose_saver.pose
-            body = bodysaver.body
-            fluent_list.append(('AtPose', body, pose))
-        fluent_tuple = tuple(fluent_list)
+        # for bodysaver in self.scn.saved_world.body_savers:
+        #     pose = bodysaver.pose_saver.pose
+        #     body = bodysaver.body
+        #     fluent_list.append(('AtPose', body, pose))
+        # fluent_tuple = tuple(fluent_list)
+
+        fluent_tuple = get_stream_fluents(stream, mapping)
 
         seed_gen_fn = self.get_op_info(stream).seed_gen_fn
 
