@@ -14,15 +14,15 @@
   (:stream inverse-kinematics
     :inputs (?a - arm ?o - wuti ?p - pose ?g - grasp)
     :domain (and (Controllable ?a) (IsPose ?o ?p) (IsGrasp ?o ?g))
+    :fluents (AtPose)
     :outputs (?q - config ?t - trajectory)
     :certified (and (IsBConf ?q) (Kin ?a ?o ?p ?g ?q ?t))
   )
   (:stream plan-base-motion
     :inputs (?q1 - config ?q2 - config)
     :domain (and (IsBConf ?q1) (IsBConf ?q2))
-    :fluents (AtPose) ; AtGrasp
+    :fluents (AtPose)
     :outputs (?t - trajectory)
     :certified (BaseMotion ?q1 ?t ?q2)
   )
-
 )

@@ -488,11 +488,14 @@ class SkeletonEnv(object):
         """
         assert depth in self.depth_to_decision_info
         steps, ops = self.get_steps_ops(depth)
-        add_mapping, digraph, sdg_msg = self._apply_stream(ops[0], mapping, decision)
+        add_mapping, digraph, sdg_msg, datum = self._apply_stream(ops[0], steps[0], mapping, decision)
+        print(f'depth: {depth}')
+        print(f'steps: {steps}')
+        print(f'Decision: {ops[0]}')
         if add_mapping is None:
-            return None, steps[0], digraph, sdg_msg  # updated_mapping, termial_step
+            return None, steps[0], digraph, sdg_msg, [datum]  # updated_mapping, termial_step
         else:
-            return add_mapping, None, None, None
+            return add_mapping, None, None, None, [datum]
 
     def apply_transition(self, depth, mapping):
         assert depth not in self.depth_to_decision_info
@@ -504,23 +507,25 @@ class SkeletonEnv(object):
         total_mapping = {}
         total_mapping.update(mapping)
         yg = None
+        data = []
         for step, op in zip(steps, ops):
             op = self.op_plan[step]
             if isinstance(op, EXE_Stream):
                 assert not self.get_op_info(op).free_generator
 
-                add_mapping, digraph, sdg_msg = self._apply_stream(op, total_mapping)
+                add_mapping, digraph, sdg_msg, datum = self._apply_stream(op, step, total_mapping)
+                data.append(datum)
                 if add_mapping is None:
-                    return None, step, sum_action_reward, digraph, sdg_msg
+                    return None, step, sum_action_reward, digraph, sdg_msg, data
                 net_add_mapping.update(add_mapping)
                 total_mapping.update(add_mapping)
             elif isinstance(op, EXE_Action):
                 action_reward = self._simulate_action(op, total_mapping)
                 if action_reward is None:
-                    return None, step, sum_action_reward, yg
+                    return None, step, sum_action_reward, yg, data
                 sum_action_reward += action_reward
 
-        return net_add_mapping, None, sum_action_reward, None, None
+        return net_add_mapping, None, sum_action_reward, None, None, data
 
     def get_digraph(self):
         list_node = list(self.digraph)
@@ -600,7 +605,7 @@ class SkeletonEnv(object):
 
         return digraph, sdg_msg
     
-    def log_statistics(self, name, input_objects, output_objects, fluent_objects, elapsed_time, success):
+    def log_statistics(self, name, step, input_objects, output_objects, fluent_objects, elapsed_time, success):
         if success:
             datum = {}
             datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
@@ -612,7 +617,13 @@ class SkeletonEnv(object):
 
             datum['outcome'] = 1
             datum['costs'] = [elapsed_time, 0.0]
-            datum['motion_cost'] = [0.0]
+
+            motion_cost = 0.0
+            for ob in output_objects:
+                if 'Commands' in str(type(ob)):
+                    motion_cost = sum([command.distance() for command in ob.commands])
+
+            datum['motion_cost'] = [motion_cost]
             datum['label'] = [datum['outcome']] + datum['costs']
 
         if not success:
@@ -627,7 +638,9 @@ class SkeletonEnv(object):
         
         self.data[name].append(datum)
 
-    def _apply_stream(self, stream, mapping, seed=None):
+        return {name: datum}
+
+    def _apply_stream(self, stream, step, mapping, seed=None):
         """
         :param stream: EXE_Stream to be applied
         :param seed: the move(output of a stream generator) suggested by node.
@@ -661,12 +674,12 @@ class SkeletonEnv(object):
                 self.failure_log[stream.name] = 1
             else:
                 self.failure_log[stream.name] += 1
-            self.log_statistics(stream.name, input_tuple, output_tuple, fluent_tuple, elapsed_time, False)
-            return None, digraph, sdg_msg
+            datum = self.log_statistics(stream.name, step, input_tuple, output_tuple, fluent_tuple, elapsed_time, False)
+            return None, digraph, sdg_msg, datum
 
         old_objects = stream.outputs  # tuple
         new_objects = None
-        self.log_statistics(stream.name, input_tuple, output_tuple, fluent_tuple, elapsed_time, True)
+        datum = self.log_statistics(stream.name, step, input_tuple, output_tuple, fluent_tuple, elapsed_time, True)
 
         if output_tuple:
             new_objects = tuple(EXE_Object(o.pddl, v) for o, v in zip(old_objects, output_tuple))
@@ -675,7 +688,7 @@ class SkeletonEnv(object):
         for v, c in zip(old_objects, new_objects):
             add_mapping[v] = c
 
-        return add_mapping, None, None
+        return add_mapping, None, None, datum
 
     def _simulate_action(self, action, mapping):
         """
@@ -689,9 +702,9 @@ class SkeletonEnv(object):
         action_reward = self.update_env_reward_fn(list_action)
 
         """Apply action uncertainties for specific actions."""
-        if action.name == 'pick' and action.parameters[0].value == 1 and 0:
-            if np.random.uniform() > 0.5:
-                action_reward = None
+        # if action.name == 'pick' and action.parameters[0].value == 1 and 0:
+        #     if np.random.uniform() > 0.5:
+        #         action_reward = None
 
         return action_reward
 

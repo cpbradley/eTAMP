@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy, copy
 import numpy as np
 import scipy.spatial.distance as spdist
@@ -32,13 +33,25 @@ class ExtendedNode(object):
     def add_child(self, sk_branch):
         self.children.append(sk_branch)
 
-    def save_the_tree(self, append_name=''):
+    def save_the_tree(self, append_name='', full_file_name=None):
         list_branch = []
         for b in self.children:
             list_branch.append(b.id_to_node)
-        file_name = 'ext_tree_nodes_' + str(append_name) + '.pk'
+        if full_file_name:
+            file_name, extension = os.path.splitext(full_file_name)
+            file_name = file_name + str(append_name) + '.pkl'
+        else:
+            file_name = 'ext_tree_nodes_' + str(append_name) + '.pkl'
         with open(file_name, 'wb') as f:
             pk.dump(list_branch, f)
+
+    # def save_the_tree(self, append_name=''):
+    #     list_branch = []
+    #     for b in self.children:
+    #         list_branch.append(b.id_to_node)
+    #     file_name = 'ext_tree_nodes_' + str(append_name) + '.pk'
+    #     with open(file_name, 'wb') as f:
+    #         pk.dump(list_branch, f)
 
     @property
     def op_set(self):
@@ -110,6 +123,9 @@ class Node(object):
         self.add_mapping = None
         self.is_discrete = None
         self.available_actions = None
+        self.datum = None
+        self.motion_cost = 0.0
+
         if self.is_decision_node and not self.is_leaf:
             self.decision_info = env.depth_to_decision_info[self.depth]
             self.is_discrete = self.decision_info.discrete
@@ -122,14 +138,15 @@ class Node(object):
         if self.parent.is_decision_node:
             self.decision = self.parent.sample_new_decision(env)
             # print(self.decision)
-            self.add_mapping, self.step_terminal, digraph, sdg_msg = env.apply_decision(self.parent.depth,
+            self.add_mapping, self.step_terminal, digraph, sdg_msg, self.datum = env.apply_decision(self.parent.depth,
                                                                                         self.parent.var_mapping,
                                                                                         self.decision)
         else:
             # the world state will be changed here
-            self.add_mapping, self.step_terminal, self.action_reward, digraph, sdg_msg = env.apply_transition(
+            self.add_mapping, self.step_terminal, self.action_reward, digraph, sdg_msg, self.datum = env.apply_transition(
                 self.parent.depth,
                 self.parent.var_mapping)
+        self.motion_cost = sum([list(dat.values())[0]['motion_cost'][0] for dat in self.datum])
 
         self.is_terminal = (self.step_terminal is not None)
         self.is_final = self.is_terminal or self.is_leaf
@@ -167,6 +184,17 @@ class Node(object):
     @property
     def decision_list(self):
         return get_decision_list(self)
+
+    @property
+    def total_motion_cost(self):
+        motion_cost = 0.0
+        node = self
+        while not node.is_root:
+            motion_cost += node.motion_cost
+            node = node.parent
+
+        return motion_cost
+
 
     def receive_visit(self, env):
         self.visits += 1

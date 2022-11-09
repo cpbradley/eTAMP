@@ -14,16 +14,18 @@
     :certified (and (IsPose ?ou ?pu) (IsStackSupport ?ou ?pu ?os ?ps))
   )
 
-  (:stream sample-grasp-dir
-    :inputs (?o - wuti ?p - pose)
-    :domain (and (Graspable ?o) (isPose ?o ?p))
-    :outputs (?dg - grasp_dir)
-    :certified (IsGraspDir ?o ?p ?dg)
-  )
+  ; (:stream sample-grasp-dir
+  ;   :inputs (?o - wuti ?p - pose)
+  ;   :domain (and (Graspable ?o) (isPose ?o ?p))
+  ;   :outputs (?dg - grasp_dir)
+  ;   :certified (IsGraspDir ?o ?p ?dg)
+  ; )
 
   (:stream sample-grasp
-    :inputs (?o - wuti ?p - pose ?dg - grasp_dir)
-    :domain (IsGraspDir ?o ?p ?dg)
+    :inputs (?o - wuti ?p - pose)
+    ; :inputs (?o - wuti ?p - pose ?dg - grasp_dir)
+    :domain (and (Graspable ?o) (isPose ?o ?p))
+    ; :domain (IsGraspDir ?o ?p ?dg)
     :outputs (?g - grasp)
     :certified (and (GraspAtPose ?g ?p) (IsGrasp ?o ?g))
   )

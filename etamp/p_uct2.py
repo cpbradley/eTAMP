@@ -149,6 +149,7 @@ def visualize_tree(edges, id_to_node):
             # lable_map[node_id] = 'v {:.3f}\nn {:.2f}'.format(node.value, node.visits)
 
         np.set_printoptions(precision=2, suppress=True)
+        # lable_map[node_id] = f'depth {node.depth}'
         if node.decision is not None:
             decision = np.array(node.decision)
             lable_map[node_id] = 'd {}\nv {:.3f}\nn {:.2f}'.format(decision, node.value, node.visits)
@@ -304,6 +305,15 @@ class PlannerUCT(object):
         all_idxes = [n.depth if (not n.is_terminal) else -1 for n in all_nodes]
         best_idx = np.argmax(all_idxes)
         return all_nodes[best_idx]
+
+    def get_motion_cost(self):
+        all_nodes = list(self.id_to_node.values())
+        all_idxes = [n.depth for n in all_nodes]
+        deepest_idx = np.argmax(all_idxes)
+        deepest_node = all_nodes[deepest_idx]
+        # if deepest_node.step_terminal is None:
+        #     return None
+        return deepest_node.total_motion_cost
 
     def get_essenceJam(self):
         all_nodes = list(self.id_to_node.values())

@@ -20,7 +20,7 @@ from etamp.pddlstream.utils import read, INF, get_file_path, find_unique
 from etamp.p_uct2 import PlannerUCT
 from etamp.tree_node2 import ExtendedNode
 from etamp.env_sk_branch import SkeletonEnv
-from build_scenario import Scene_unpack3,Scene_unpack2,Scene_unpack1
+from .build_scenario import Scene_unpack3,Scene_unpack2,Scene_unpack1
 
 
 def get_fixed(robot, movable):
@@ -194,7 +194,7 @@ def get_pddlstream_problem(scn):
                                                   free_generator=True, discrete=True,
                                                   p1=[2],
                                                   p2=[10]),
-                   'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp(robot)),
+                   'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp(robot, scn.dic_body_info)),
                    'inverse-kinematics': StreamInfo(seed_gen_fn=sdg_ik_grasp(robot, scn.all_bodies)),
                    'plan-free-motion': StreamInfo(seed_gen_fn=sdg_plan_free_motion(robot, all_bodies)),
                    'plan-holding-motion': StreamInfo(seed_gen_fn=sdg_plan_holding_motion(robot, all_bodies)),
