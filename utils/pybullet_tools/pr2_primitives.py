@@ -492,6 +492,7 @@ class sdg_ik_arm_hanoi(object):
 
         self.teleport = teleport
         self.max_attempts = max_attempts
+        # self.max_attempts = 50
 
         self.fixed_movable = scn.all_bodies
         self.dict_arm = scn.dict_arm
@@ -569,19 +570,32 @@ class sdg_ik_arm_hanoi(object):
         with LockRenderer():
             for i in range(self.max_attempts):
                 temp_conf = sample_fn()
+                # print(temp_conf)
                 # temp_conf = default_conf
                 set_joint_positions(robot, arm_joints, temp_conf)  # default_conf | sample_fn()
 
                 grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose,
                                                     custom_limits=self.custom_limits)  # , upper_limits=USE_CURRENT)
+                # grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose)
+                                                    
 
                 # nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
                 is_collision = any(pairwise_collision(robot, b) for b in obstacles)
+                print(f'Body: {body}')
+                if body != 6:
+                    print(body)
+                    assert False
+                for b in obstacles:
+                    if pairwise_collision(robot, b):
+                        print(b)
 
+                if is_collision:
+                    print('is_collision')
+                if not grasp_conf:
+                    print('ack')
                 if not ((grasp_conf is None) or is_collision):  # [obj]
 
-                    if is_collision:
-                        print('is_collision')
+                    print('here')
                     approach_conf = sub_inverse_kinematics(robot, arm_joints[0], ee_link, approach_pose,
                                                            custom_limits=self.custom_limits)
                     # approach_conf = inverse_kinematics(robot, arm_link, approach_pose)

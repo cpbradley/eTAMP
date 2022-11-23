@@ -492,6 +492,7 @@ class sdg_sample_grasp_dir(object):
             idx = np.array([seed]).flatten()[0]
 
         direction = list_available[int(idx)]
+        print(f'DIRECTION: {direction}')
 
         return (GraspDirection(body, pose, direction, self.robot, self.dic_body_info),)
 
@@ -518,13 +519,19 @@ class sdg_sample_grasp0(object):
 
 
 class sdg_sample_grasp(object):
-    def __init__(self, robot):
+    def __init__(self, robot, dic_body_info=None):
+        self.dic_body_info = dic_body_info
         self.robot = robot
         self.end_effector_link = link_from_name(robot, TOOL_FRAMES[get_body_name(robot)])
 
     def search(self, input_tuple, seed=None):
         """return the ee_frame wrt the object_frame of the object"""
-        body, pose, grasp_dir = input_tuple  # grasp_dir defined in ellipsoid_frame of the body
+        try:
+            body, pose, grasp_dir = input_tuple  # grasp_dir defined in ellipsoid_frame of the body
+        except:
+            body, pose = input_tuple  # grasp_dir defined in ellipsoid_frame of the body
+            direction = 2
+            grasp_dir = GraspDirection(body, pose, direction, self.robot, self.dic_body_info)
 
         assert body == grasp_dir.body
         ellipsoid_frame, obj_extent, direction = grasp_dir.ellipsoid_frame, grasp_dir.obj_extent, grasp_dir.direction

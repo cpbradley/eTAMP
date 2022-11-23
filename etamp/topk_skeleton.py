@@ -1085,8 +1085,12 @@ class TopkSkeleton(object):
         return len(self.op_history)
 
     def generate_operatorPlan(self, pointer):
+        import time
+        print('here')
+        now = time.time()
         if pointer >= self.num_ap:
             return None
+        
 
         if pointer in self.op_history:
             return self.op_history[pointer]
@@ -1096,9 +1100,13 @@ class TopkSkeleton(object):
                                                                      self.original_problem,
                                                                      self.optms_results, ap_file,
                                                                      self.stream_file)
+        print(time.time() - now)
+        now = time.time()
 
         fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'temp/B_fullPlans',
                                     'B_fp', 'Skeleton_SN = ' + str(pointer))
+        print(time.time() - now)
+        now = time.time()
         if not fp_files:
             print('Failed: in creating fp_files. ap_file = ' + ap_file)
             return None
@@ -1109,22 +1117,36 @@ class TopkSkeleton(object):
         """Find streams for each step of the action plan"""
 
         full_list_stream, full_list_action = get_result_action_list(fp_path)
+        print(time.time() - now)
+        now = time.time()
 
         op_domain, op_problem = reorder_domain_problem(copy(fp_domain), copy(fp_problem), full_list_stream,
                                                        full_list_action)
+        print(time.time() - now)
+        now = time.time()
         op_files = run_pddl_planner(op_domain, op_problem, 1, 'temp/C_operatorPlans',
                                     'C_op', 'Skeleton_SN = ' + str(pointer))
+        print(time.time() - now)
+        now = time.time()
         if not fp_files:
             print('Failed: in creating op_files.')
             return None
         op_path = op_files[0]
 
         streams_for_step, full_list_action = read_streams_with_action(op_path)
+        print(time.time() - now)
+        now = time.time()
 
         """Text plan -> Object plan"""
         propo_to_action = get_inst_action_mapping()
+        print(time.time() - now)
+        now = time.time()
         op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
+        print(time.time() - now)
+        now = time.time()
         fill_in_fluents(op_plan0, self.original_init)
+        print(time.time() - now)
+        now = time.time()
 
         plan_description_path = op_path + '.txt'
         exe_plan_path = op_path + '.pk'
@@ -1132,6 +1154,8 @@ class TopkSkeleton(object):
         # optms_plan = log_fullPlan(op_plan, plan_description_path, exe_plan_path)
 
         op_plan = postprocess_opPlan(op_plan0)
+        print(time.time() - now)
+        now = time.time()
 
         log_save_opPlan(op_plan, plan_description_path, exe_plan_path)
 
@@ -1156,3 +1180,54 @@ class TopkSkeleton(object):
             actionEssence.append((action_name, para_tuple))
 
         return actionEssence
+
+
+
+def gen_operatorPlan(pointer, ap_files, original_domain, original_problem, optms_results, stream_file, original_init):
+
+    ap_file = ap_files[pointer]
+    fp_domain, fp_problem, inst_to_stream = propo_domain_problem(original_domain,
+                                                                 original_problem,
+                                                                 optms_results, ap_file,
+                                                                 stream_file)
+
+    fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'temp/B_fullPlans',
+                                'B_fp', 'Skeleton_SN = ' + str(pointer))
+    if not fp_files:
+        print('Failed: in creating fp_files. ap_file = ' + ap_file)
+        return None
+    fp_path = fp_files[0]
+
+    # stream_plan, action_plan = extract_stream_action_plan(fp_path, propo_to_stream)
+
+    """Find streams for each step of the action plan"""
+
+    full_list_stream, full_list_action = get_result_action_list(fp_path)
+
+    op_domain, op_problem = reorder_domain_problem(copy(fp_domain), copy(fp_problem), full_list_stream,
+                                                    full_list_action)
+    op_files = run_pddl_planner(op_domain, op_problem, 1, 'temp/C_operatorPlans',
+                                'C_op', 'Skeleton_SN = ' + str(pointer))
+    return op_files
+    # if not fp_files:
+    #     print('Failed: in creating op_files.')
+    #     return None
+    # op_path = op_files[0]
+
+    # streams_for_step, full_list_action = read_streams_with_action(op_path)
+
+    # """Text plan -> Object plan"""
+    # propo_to_action = get_inst_action_mapping()
+    # op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
+    # fill_in_fluents(op_plan0, original_init)
+
+    # plan_description_path = op_path + '.txt'
+    # exe_plan_path = op_path + '.pk'
+
+    # # optms_plan = log_fullPlan(op_plan, plan_description_path, exe_plan_path)
+
+    # op_plan = postprocess_opPlan(op_plan0)
+
+    # log_save_opPlan(op_plan, plan_description_path, exe_plan_path)
+
+    # return op_plan

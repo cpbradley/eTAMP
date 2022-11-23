@@ -622,6 +622,9 @@ class SkeletonEnv(object):
             for ob in output_objects:
                 if 'Commands' in str(type(ob)):
                     motion_cost = sum([command.distance() for command in ob.commands])
+                elif 'Command' in str(type(ob)):
+                    motion_cost = sum([body_path.distance() for body_path in ob.body_paths if 'distance' in dir(body_path)])
+
 
             datum['motion_cost'] = [motion_cost]
             datum['label'] = [datum['outcome']] + datum['costs']

@@ -46,7 +46,7 @@ def exp():
             e_root.add_child(selected_branch)
         else:
             selected_branch = e_root.select_child_ucb()
-        concrete_plan = selected_branch.think(1, 0)
+        concrete_plan = selected_branch.think(1, 1)
         # print('total_node: ', e_root.total_node)
         num_attempts += 1
         thinking_time = time.time() - st

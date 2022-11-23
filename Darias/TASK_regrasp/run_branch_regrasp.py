@@ -17,7 +17,7 @@ from etamp.pddlstream.utils import read, INF, get_file_path, find_unique
 from etamp.p_uct2 import PlannerUCT
 from etamp.tree_node2 import ExtendedNode
 from etamp.env_sk_branch import SkeletonEnv
-from build_scenario import get_scn, Scene_regrasp1
+from .build_scenario import get_scn, Scene_regrasp1
 
 from etamp.constraint_graph import Constraint
 
