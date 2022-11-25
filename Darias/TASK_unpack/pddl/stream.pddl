@@ -33,6 +33,7 @@
   (:stream inverse-kinematics
     :inputs (?o - wuti ?p - pose ?g - grasp)
     :domain (and (IsPose ?o ?p) (IsGrasp ?o ?g))
+    :fluents (AtPose)
     :outputs (?q - config ?t - trajectory)
     :certified (and (IsConf ?q) (IsTraj ?t) (IsKin ?o ?p ?g ?q ?t))
   )
