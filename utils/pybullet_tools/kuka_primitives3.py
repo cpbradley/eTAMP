@@ -540,6 +540,7 @@ class sdg_sample_grasp(object):
 
         translate_z = Pose(point=[0, 0, -0.001])
         list_grasp = []
+        list_ind = [0, 1]
         if direction == 0:
             """ee at +X of the ellipsoid_frame"""
             swap_z = Pose(euler=[0, -np.pi / 2, 0])  # direct +z to -x
@@ -563,6 +564,7 @@ class sdg_sample_grasp(object):
 
         elif direction == 2:
             """ee at +Z"""
+            list_ind = [0, 1, 2, 3]
             swap_z = Pose(euler=[0, np.pi, 0])  # direct +z to -z
             d1, d2 = 0., 0.  # [-0.5, 0.5]
             translate_point = Pose(point=[0 - d2 * ex, 0 + d1 * ey, ez])
@@ -592,7 +594,20 @@ class sdg_sample_grasp(object):
                 list_grasp.append(grasp)
 
         """ee_frame wrt ellipsoid_frame"""
-        grasp_pose = random.sample(list_grasp, 1)[0]
+        # if seed is None:
+        #     grasp_pose = random.sample(list_grasp, 1)[0]
+        # else:
+        if seed is None:
+            idx = random.sample(list_ind, 1)[0]
+        else:
+            idx = np.array([seed]).flatten()[0]
+        if idx > len(list_grasp):
+            assert False
+        print(f'SEEEEEEEEEEEEEEED: {seed}')
+        print(idx)
+
+        grasp_pose = list_grasp[int(idx)]
+        print(grasp_pose)
         """ee_frame wrt object_frame: get_pose()"""
         grasp_pose = multiply(invert(get_pose(body)), pose_from_tform(ellipsoid_frame), grasp_pose)
 
@@ -601,7 +616,7 @@ class sdg_sample_grasp(object):
         return (body_grasp,)  # return a tuple
 
     def __call__(self, input_tuple, seed=None):
-        return self.search(input_tuple, seed=None)
+        return self.search(input_tuple, seed=seed)
 
 
 class sdg_ik_grasp(object):

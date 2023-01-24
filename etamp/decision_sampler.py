@@ -122,10 +122,12 @@ class SamplerDiscrete(object):
         self.list_p = self.list_p / sum(list_p)
 
         self.num_decisions = len(list_p)
+        self.made_decisions = 0
 
     def __call__(self, existing_decisions, suggestion=None):
         # return 1
 
+        self.made_decisions += 1
         if suggestion and suggestion not in existing_decisions:
             """Prioritize the suggestions from BO"""
             return format_discrete(suggestion)
@@ -143,3 +145,7 @@ class SamplerDiscrete(object):
         list_p = list_p / sum(list_p)
         choice = np.random.choice(candidates, p=list_p)
         return format_discrete(choice)
+    
+    @property
+    def available_decisions(self):
+        return self.num_decisions > self.made_decisions

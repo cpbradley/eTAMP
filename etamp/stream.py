@@ -132,7 +132,7 @@ class DebugValue(object):  # TODO: could just do an object
 
 class StreamInfo(ExternalInfo):
     def __init__(self, opt_gen_fn=PartialInputs(), negate=False, simultaneous=False, defer=False,
-                 seed_gen_fn=None, free_generator=False, discrete=None, p1=None, p2=None, every_layer=100,
+                 seed_gen_fn=None, free_generator=False, discrete=None, p1=None, p2=None, every_layer=100, max_queries=1000,
                  **kwargs):
         # TODO: could change frequency/priority for the incremental algorithm
         super(StreamInfo, self).__init__(**kwargs)
@@ -157,6 +157,7 @@ class StreamInfo(ExternalInfo):
 
         # during optimistic evaluation, a new result will be generate every (*) layers.
         self.every_layer = every_layer
+        self.max_queries=max_queries
 
 
 ##################################################

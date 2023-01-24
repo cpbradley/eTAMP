@@ -172,10 +172,13 @@ def remove_types(alist):
 
 
 def action_from_result(result, name_to_nt, propo_to_result, type_to_constants):
+    # print(type(result))
+    # print(result)
     nt_stream = name_to_nt[result.external.name]
     mapping = {}
     for k, v in result.mapping.items():
         mapping[k] = v.pddl
+        # mapping[k] = v
 
     name = 's' + str(len(propo_to_result)) + '_' + nt_stream.name
     parameters = substitute_alist(nt_stream.inputs, mapping)
@@ -658,6 +661,7 @@ def reorder_domain_problem(propo_domain, propo_problem, stream_names, action_nam
 
 def run_pddl_planner(nt_domain, nt_problem, target_result_num, result_dir_name,
                      pddl_file_prefix='', pddl_comment=''):
+
     if os.path.isdir(result_dir_name):
         shutil.rmtree(result_dir_name)
     os.mkdir(result_dir_name)
@@ -1185,6 +1189,23 @@ class TopkSkeleton(object):
 
 def gen_operatorPlan(pointer, ap_files, original_domain, original_problem, optms_results, stream_file, original_init):
 
+
+    cwd = os.getcwd()
+    prefix = 'symk_stuff/' + str(pointer) + '/'
+    tmp_folder = os.path.join(cwd, 'symk_stuff')
+    if not os.path.exists(tmp_folder):
+        os.mkdir(tmp_folder)
+    tmp_folder = os.path.join(tmp_folder, str(pointer))
+    if not os.path.exists(tmp_folder):
+        os.mkdir(tmp_folder)
+    os.chdir(tmp_folder)
+    tmp_folder = os.path.join(tmp_folder, 'temp')
+    if not os.path.exists(tmp_folder):
+        os.mkdir(tmp_folder)
+    # os.chdir(cwd + '/' + str(pointer))
+    print(tmp_folder)
+    print(os.getcwd())
+
     ap_file = ap_files[pointer]
     fp_domain, fp_problem, inst_to_stream = propo_domain_problem(original_domain,
                                                                  original_problem,
@@ -1208,26 +1229,29 @@ def gen_operatorPlan(pointer, ap_files, original_domain, original_problem, optms
                                                     full_list_action)
     op_files = run_pddl_planner(op_domain, op_problem, 1, 'temp/C_operatorPlans',
                                 'C_op', 'Skeleton_SN = ' + str(pointer))
-    return op_files
-    # if not fp_files:
-    #     print('Failed: in creating op_files.')
-    #     return None
-    # op_path = op_files[0]
+    # return op_files
+    if not fp_files:
+        print('Failed: in creating op_files.')
+        return None
+    op_path = op_files[0]
 
-    # streams_for_step, full_list_action = read_streams_with_action(op_path)
+    streams_for_step, full_list_action = read_streams_with_action(op_path)
 
-    # """Text plan -> Object plan"""
-    # propo_to_action = get_inst_action_mapping()
-    # op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
-    # fill_in_fluents(op_plan0, original_init)
+    """Text plan -> Object plan"""
+    propo_to_action = get_inst_action_mapping()
+    op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
+    fill_in_fluents(op_plan0, original_init)
 
-    # plan_description_path = op_path + '.txt'
-    # exe_plan_path = op_path + '.pk'
+    plan_description_path = op_path + '.txt'
+    exe_plan_path = op_path + '.pk'
 
-    # # optms_plan = log_fullPlan(op_plan, plan_description_path, exe_plan_path)
+    # optms_plan = log_fullPlan(op_plan, plan_description_path, exe_plan_path)
 
-    # op_plan = postprocess_opPlan(op_plan0)
+    # print(op_plan0)
+    op_plan = postprocess_opPlan(op_plan0)
 
-    # log_save_opPlan(op_plan, plan_description_path, exe_plan_path)
+    log_save_opPlan(op_plan, plan_description_path, exe_plan_path)
 
-    # return op_plan
+    os.chdir(cwd)
+
+    return op_plan
