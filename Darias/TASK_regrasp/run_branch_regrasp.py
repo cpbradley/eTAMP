@@ -203,9 +203,9 @@ def get_pddlstream_problem(scn):
                                               p1=[0, 1, 2, 3],
                                               # p1=[0],
                                               p2=[4, 4, 4, 4]),
-                   'inverse-kinematics': StreamInfo(seed_gen_fn=sdg_ik_grasp(robot, scn.all_bodies)),
-                   'plan-free-motion': StreamInfo(seed_gen_fn=sdg_plan_free_motion(robot, all_bodies)),
-                   'plan-holding-motion': StreamInfo(seed_gen_fn=sdg_plan_holding_motion(robot, all_bodies)),
+                   'inverse-kinematics': StreamInfo(seed_gen_fn=sdg_ik_grasp(robot, scn.all_bodies), max_queries=1),
+                   'plan-free-motion': StreamInfo(seed_gen_fn=sdg_plan_free_motion(robot, all_bodies), max_queries=1),
+                   'plan-holding-motion': StreamInfo(seed_gen_fn=sdg_plan_holding_motion(robot, all_bodies), max_queries=1),
                    }
     action_info = {'move_free': ActionInfo(optms_cost_fn=get_const_cost_fn(5), cost_fn=move_cost_fn),
                    'move_holding': ActionInfo(optms_cost_fn=get_const_cost_fn(5), cost_fn=move_cost_fn),
