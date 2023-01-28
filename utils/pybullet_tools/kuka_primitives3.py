@@ -598,13 +598,17 @@ class sdg_sample_grasp(object):
         #     grasp_pose = random.sample(list_grasp, 1)[0]
         # else:
         if seed is None:
+            assert False
             idx = random.sample(list_ind, 1)[0]
         else:
             idx = np.array([seed]).flatten()[0]
-        if idx > len(list_grasp):
-            assert False
+            if idx > len(list_grasp)-1:
+                list_grasp = list_grasp*2
         print(f'SEEEEEEEEEEEEEEED: {seed}')
         print(idx)
+        print(list_grasp)
+        if idx > len(list_grasp):
+            assert False
 
         grasp_pose = list_grasp[int(idx)]
         print(grasp_pose)
