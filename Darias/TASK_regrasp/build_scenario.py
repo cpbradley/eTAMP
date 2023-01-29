@@ -318,6 +318,8 @@ class Scene_regrasp1(object):
 
         self.movable_bodies = [self.bd_body['box1']]
 
+        self.distractor_bodies = [self.bd_body['box_S1'], self.bd_body['box_S2'], self.bd_body['box_S3']]
+
         self.regions = [self.bd_body['region_shelf'], self.bd_body['region_drawer'], self.bd_body['region_table']]
 
         self.env_bodies = [b for b in self.all_bodies if (b not in self.regions) and (b not in self.movable_bodies)]

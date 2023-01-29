@@ -148,6 +148,7 @@ def get_pddlstream_problem(scn):
     robot = scn.robots[0]
     movable = scn.movable_bodies
     regions = scn.regions
+    distractors = scn.distractor_bodies
 
     domain_pddl = read(get_file_path(__file__, 'pddl/domain.pddl'))
     stream_pddl = read(get_file_path(__file__, 'pddl/stream.pddl'))
@@ -162,6 +163,7 @@ def get_pddlstream_problem(scn):
 
     fixed = get_fixed(robot, movable)
     all_bodies = list(set(movable) | set(fixed))
+
     for body in movable:
         pose = BodyPose(body, get_pose(body))
         init += [('Graspable', body),
@@ -171,6 +173,10 @@ def get_pddlstream_problem(scn):
             init += [('Stackable', body, region)]
             if is_placement(body, region):
                 init += [('IsSupport', body, pose, region)]
+
+    for body in distractors:
+        pose = BodyPose(body, get_pose(body))
+        init += [('AtPose', body, pose)]
 
     for body in regions:
         init += [('Fixed', body)]
