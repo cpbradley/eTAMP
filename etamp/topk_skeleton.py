@@ -73,11 +73,13 @@ class EXE_Action(object):
 
 
 class EXE_Stream(object):
-    def __init__(self, name, inputs, outputs, fluents=[]):
+    def __init__(self, name, inputs, outputs, fluents=[], certified=[], domain=[]):
         self.name = name
         self.inputs = inputs
         self.outputs = outputs
         self.fluents = fluents
+        self.domain = domain
+        self.certified = certified
 
     def __iter__(self):
         for o in [self.name, self.inputs, self.outputs]:
@@ -735,16 +737,20 @@ def extract_stream_action_plan(fp_path, propo_to_stream):
 
 def fill_in_fluents(op_plan, init_facts):
     facts = set(copy(init_facts))
+    op_facts = []
     import pddl
-    from etamp.pddlstream.algorithms.downward import fact_from_fd
+    from etamp.pddlstream.algorithms.downward import fact_from_fd, fd_from_fact
 
     for op in op_plan:
+        op_facts.append(copy(facts))
         if isinstance(op, StreamResult):
             fluents = op.instance.external.fluents
 
             fluent_facts = list(map(fact_from_fd, filter(
                 lambda f: isinstance(f, pddl.Atom) and (f.predicate in fluents), facts)))
             op.instance.fluent_facts = fluent_facts
+            for addfact in op.certified:
+                facts.add(fd_from_fact(addfact))
 
 
 
@@ -759,6 +765,9 @@ def fill_in_fluents(op_plan, init_facts):
                         break
                 if bad_fact:
                     facts.remove(bad_fact)
+
+    return op_facts
+
 
 
 def build_op_plan(streams_for_step, list_action, propo_to_stream, propo_to_action):
@@ -923,13 +932,23 @@ def postprocess_opPlan(raw_plan):
             name = op.external.name
             inputs = op.instance.input_objects
             outputs = op.output_objects
+            certified = op.certified
+            domain = op.instance.domain
             fluents = op.instance.fluent_facts
             exe_fluents = []
             for fluent in fluents:
                 exe_fluents.append(tuple(o.get_EXE() if type(o) is not str else o for o in fluent))
+            exe_domain = []
+            for dfact in domain:
+                exe_domain.append(tuple(o.get_EXE() if type(o) is not str else o for o in dfact))
+            exe_certified = []
+            for cfact in certified:
+                exe_certified.append(tuple(o.get_EXE() if type(o) is not str else o for o in cfact))
 
             op_plan.append(EXE_Stream(name, tuple(o.get_EXE() for o in inputs),
                                       tuple(o.get_EXE() for o in outputs),
+                                      domain=tuple(exe_domain),
+                                      certified=tuple(exe_certified),
                                       fluents=tuple(exe_fluents)))
         if isinstance(op, pAction):
             name = op.name
@@ -1148,7 +1167,7 @@ class TopkSkeleton(object):
         op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
         print(time.time() - now)
         now = time.time()
-        fill_in_fluents(op_plan0, self.original_init)
+        op_facts = fill_in_fluents(op_plan0, self.original_init)
         print(time.time() - now)
         now = time.time()
 
@@ -1165,7 +1184,7 @@ class TopkSkeleton(object):
 
         self.op_history[pointer] = (op_path, plan_description_path, exe_plan_path)
 
-        return op_plan
+        return op_plan#, op_facts
 
     def get_next_operatorPlan(self):
         return self.generate_operatorPlan(self.pointer)
@@ -1240,7 +1259,7 @@ def gen_operatorPlan(pointer, ap_files, original_domain, original_problem, optms
     """Text plan -> Object plan"""
     propo_to_action = get_inst_action_mapping()
     op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
-    fill_in_fluents(op_plan0, original_init)
+    op_facts = fill_in_fluents(op_plan0, original_init)
 
     plan_description_path = op_path + '.txt'
     exe_plan_path = op_path + '.pk'
@@ -1254,4 +1273,4 @@ def gen_operatorPlan(pointer, ap_files, original_domain, original_problem, optms
 
     os.chdir(cwd)
 
-    return op_plan
+    return op_plan#, op_facts
