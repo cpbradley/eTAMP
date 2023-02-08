@@ -90,6 +90,39 @@ def get_stream_fluents(stream, mapping):
 
     return tuple(new_fluents)
 
+def get_stream_values(stream, mapping):
+    def mapping_fn(o):
+        if is_active_arg(o):
+            t = []
+            for i in mapping.items():
+                t.append(i)
+
+            return mapping[o]
+        else:
+            return o
+
+    new_inputs = tuple(map(mapping_fn, stream.inputs))
+    input_tuple = tuple(obj.value for obj in new_inputs)
+
+    new_fluents = []
+    for fluent in stream.fluents:
+        new_fluent = tuple(map(mapping_fn, fluent))
+        fluent_tuple = tuple([new_fluent[0]] + [obj.value for obj in new_fluent[1:]])
+        new_fluents.append(fluent_tuple)
+
+        # obj.value if isinstance(obj, Object) else obj for obj in fluent_objects
+    new_domain = []
+    for domain in stream.domain:
+        new_dom = tuple(map(mapping_fn, domain))
+        domain_tuple = tuple([new_dom[0]] + [obj.value for obj in new_dom[1:]])
+        new_domain.append(domain_tuple)
+
+    new_certified = []
+    for certified in stream.certified:
+        certified_tuple = tuple([certified[0]] + [obj.value for obj in certified[1:]])
+        new_certified.append(certified_tuple)
+
+    return input_tuple, new_fluents, new_domain, new_certified
 
 def pre_dict_decision(node):
     depth_to_decision = {}
@@ -605,43 +638,77 @@ class SkeletonEnv(object):
 
         return digraph, sdg_msg
     
-    def log_statistics(self, name, step, input_objects, output_objects, fluent_objects, elapsed_time, success):
+    def log_statistics(self, name, stream_values, output_objects, elapsed_time, success):
+        input_objects, fluent_objects, domain_objects, _ = stream_values
+        datum = {}
+        motion_cost = 0.0
+
+        datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
+        datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
+        datum['domain'] = [obj.value if isinstance(obj, Object) else obj for obj in domain_objects]
+
         if success:
-            datum = {}
-            datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
-            datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
             if output_objects:
                 datum['outputs'] = [obj.value if isinstance(obj, Object) else obj for obj in output_objects]
             else:
                 datum['outputs'] = []
-
             datum['outcome'] = 1
             datum['costs'] = [elapsed_time, 0.0]
-
-            motion_cost = 0.0
             for ob in output_objects:
                 if 'Commands' in str(type(ob)):
                     motion_cost = sum([command.distance() for command in ob.commands])
                 elif 'Command' in str(type(ob)):
                     motion_cost = sum([body_path.distance() for body_path in ob.body_paths if 'distance' in dir(body_path)])
 
-
-            datum['motion_cost'] = [motion_cost]
             datum['label'] = [datum['outcome']] + datum['costs']
-
-        if not success:
-            datum = {}
-            datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
-            datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
+        else:
             datum['outputs'] = []
             datum['outcome'] = 0
             datum['costs'] = [0.0, elapsed_time]
-            datum['motion_cost'] = [0.0]
-            datum['label'] = [datum['outcome']] + datum['costs']
-        
-        self.data[name].append(datum)
 
+        datum['motion_cost'] = [motion_cost]
+        datum['label'] = [datum['outcome']] + datum['costs']
+
+        self.data[name].append(datum)
         return {name: datum}
+
+    # def log_statistics(self, name, step, input_objects, output_objects, fluent_objects, elapsed_time, success):
+    #     if success:
+    #         datum = {}
+    #         datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
+    #         datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
+    #         if output_objects:
+    #             datum['outputs'] = [obj.value if isinstance(obj, Object) else obj for obj in output_objects]
+    #         else:
+    #             datum['outputs'] = []
+
+    #         datum['outcome'] = 1
+    #         datum['costs'] = [elapsed_time, 0.0]
+
+    #         motion_cost = 0.0
+    #         for ob in output_objects:
+    #             if 'Commands' in str(type(ob)):
+    #                 motion_cost = sum([command.distance() for command in ob.commands])
+    #             elif 'Command' in str(type(ob)):
+    #                 motion_cost = sum([body_path.distance() for body_path in ob.body_paths if 'distance' in dir(body_path)])
+
+
+    #         datum['motion_cost'] = [motion_cost]
+    #         datum['label'] = [datum['outcome']] + datum['costs']
+
+    #     if not success:
+    #         datum = {}
+    #         datum['inputs'] = [obj.value if isinstance(obj, Object) else obj for obj in input_objects]
+    #         datum['fluents'] = [obj.value if isinstance(obj, Object) else obj for obj in fluent_objects]
+    #         datum['outputs'] = []
+    #         datum['outcome'] = 0
+    #         datum['costs'] = [0.0, elapsed_time]
+    #         datum['motion_cost'] = [0.0]
+    #         datum['label'] = [datum['outcome']] + datum['costs']
+        
+    #     self.data[name].append(datum)
+
+    #     return {name: datum}
 
     def _apply_stream(self, stream, step, mapping, seed=None):
         """
@@ -650,15 +717,9 @@ class SkeletonEnv(object):
         """
 
         input_tuple = get_stream_inputs(stream, mapping)
-        fluent_list = []
-
-        # for bodysaver in self.scn.saved_world.body_savers:
-        #     pose = bodysaver.pose_saver.pose
-        #     body = bodysaver.body
-        #     fluent_list.append(('AtPose', body, pose))
-        # fluent_tuple = tuple(fluent_list)
-
         fluent_tuple = get_stream_fluents(stream, mapping)
+        stream_values = get_stream_values(stream, mapping)
+        fluent_list = []
 
         seed_gen_fn = self.get_op_info(stream).seed_gen_fn
 
@@ -677,12 +738,15 @@ class SkeletonEnv(object):
                 self.failure_log[stream.name] = 1
             else:
                 self.failure_log[stream.name] += 1
-            datum = self.log_statistics(stream.name, step, input_tuple, output_tuple, fluent_tuple, elapsed_time, False)
+            # datum = self.log_statistics(stream.name, step, input_tuple, output_tuple, fluent_tuple, elapsed_time, False)
+            datum = self.log_statistics(stream.name, stream_values, output_tuple, elapsed_time, False)
+
             return None, digraph, sdg_msg, datum
 
         old_objects = stream.outputs  # tuple
         new_objects = None
-        datum = self.log_statistics(stream.name, step, input_tuple, output_tuple, fluent_tuple, elapsed_time, True)
+        datum = self.log_statistics(stream.name, stream_values, output_tuple, elapsed_time, True)
+        # datum = self.log_statistics(stream.name, step, input_tuple, output_tuple, fluent_tuple, elapsed_time, True)
 
         if output_tuple:
             new_objects = tuple(EXE_Object(o.pddl, v) for o, v in zip(old_objects, output_tuple))
