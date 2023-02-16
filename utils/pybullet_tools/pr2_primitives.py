@@ -52,6 +52,10 @@ class BodyPose(object):
         self.support = support
         self.init = init
 
+        aabb = get_aabb(body)
+        self.dimensions = aabb[1] - aabb[0]
+        self.pose = value
+
     def assign(self):
         set_pose(self.body, self.value)
 

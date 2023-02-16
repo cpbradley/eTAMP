@@ -12,7 +12,7 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     step_simulation, refine_path, plan_direct_joint_motion, get_joint_positions, dump_world, \
     get_distance, get_links, get_links_movement, get_unit_vector, unit_quat, multiply, get_link_pose, tform_from_pose, \
     add_line, get_joint_info, invert, get_detection_cone, create_mesh, apply_alpha, GREEN, RED, attach_viewcone, \
-    collision_dist, control_joints
+    collision_dist, control_joints, get_aabb
 
 from utils.pybullet_tools.body_utils import *
 from utils.pybullet_tools.utils import SDG_MSG
@@ -42,6 +42,8 @@ class BodyPose(object):
         if pose is None:
             pose = get_pose(body)
         self.body = body
+        aabb = get_aabb(body)
+        self.dimensions = aabb[1] - aabb[0]
         self.pose = pose
 
     def assign(self):
@@ -52,6 +54,9 @@ class BodyPose(object):
         m_pose = Pose(d_xyz_rpy[0:3], d_xyz_rpy[3:6])
         new_pose = multiply(m_pose, self.pose)
         return BodyPose(self.body, new_pose)
+    
+    def get_graph_pose(self):
+        return self.pose
 
     def __repr__(self):
         return 'p{}'.format(id(self) % 1000)
@@ -70,6 +75,11 @@ class BodyGrasp(object):
     def attachment(self):
         attach_pose = invert(self.grasp_pose)  # measure_frame in the ee_frame
         return Attachment(self.robot, self.link, attach_pose, self.body)
+    
+    def global_grasp_pose(self, body_pose):
+        print(body_pose * self.grasp_pose)
+        assert False
+        return body_pose * self.grasp_pose
 
     def assign(self):
         return self.attachment().assign()
@@ -604,14 +614,14 @@ class sdg_sample_grasp(object):
             idx = np.array([seed]).flatten()[0]
             if idx > len(list_grasp)-1:
                 list_grasp = list_grasp*2
-        print(f'SEEEEEEEEEEEEEEED: {seed}')
-        print(idx)
-        print(list_grasp)
+        # print(f'SEEEEEEEEEEEEEEED: {seed}')
+        # print(idx)
+        # print(list_grasp)
         if idx > len(list_grasp):
             assert False
 
         grasp_pose = list_grasp[int(idx)]
-        print(grasp_pose)
+        # print(grasp_pose)
         """ee_frame wrt object_frame: get_pose()"""
         grasp_pose = multiply(invert(get_pose(body)), pose_from_tform(ellipsoid_frame), grasp_pose)
 
