@@ -527,6 +527,30 @@ class sdg_sample_grasp0(object):
         body_grasp = BodyGrasp(body, grasp_pose, approach_pose, self.robot, self.end_effector_link)
         return (body_grasp,)  # return a tuple
 
+class sdg_sample_grasp_and_dir(object):
+    def __init__(self, robot, dic_body_info):
+        self.robot = robot
+        self.dic_body_info = dic_body_info
+        self.sample_grasp = sdg_sample_grasp(robot)
+
+    def __call__(self, input_tuple, seed=None):
+        body, pose = input_tuple
+
+        list_available = [0, 1, 2, 3, 4]
+        if seed is None:
+            idx = random.sample(list_available, 1)[0]
+        else:
+            idx = np.array([seed]).flatten()[0]
+
+        direction = list_available[int(idx)]
+        print(f'DIRECTION: {direction}')
+
+        grasp_direction = GraspDirection(body, pose, direction, self.robot, self.dic_body_info)
+        grasp = self.sample_grasp((body, pose, grasp_direction), seed=None)
+
+        return grasp # return a tuple
+
+        # return (GraspDirection(body, pose, direction, self.robot, self.dic_body_info),)
 
 class sdg_sample_grasp(object):
     def __init__(self, robot, dic_body_info=None):
@@ -608,7 +632,7 @@ class sdg_sample_grasp(object):
         #     grasp_pose = random.sample(list_grasp, 1)[0]
         # else:
         if seed is None:
-            assert False
+            # assert False
             idx = random.sample(list_ind, 1)[0]
         else:
             idx = np.array([seed]).flatten()[0]

@@ -8,7 +8,7 @@ from etamp.actions import ActionInfo
 from etamp.stream import StreamInfo
 from utils.pybullet_tools.kuka_primitives3 import BodyPose, BodyConf, Command, sdg_sample_place, sdg_sample_grasp_dir, \
     sdg_sample_grasp, sdg_ik_grasp, sdg_plan_free_motion, \
-    sdg_plan_holding_motion, sdg_sample_stack, Register
+    sdg_plan_holding_motion, sdg_sample_stack, Register, sdg_sample_grasp_and_dir
 from utils.pybullet_tools.utils import WorldSaver, connect, get_pose, set_pose, get_configuration, is_placement, \
     disconnect, get_bodies
 from etamp.progressive3 import solve_progressive, solve_progressive2
@@ -196,19 +196,19 @@ def get_pddlstream_problem(scn):
                                               free_generator=True, discrete=False, p1=[1, 1, 1], p2=[.2, .2, .2]),
                    'sample-stack': StreamInfo(seed_gen_fn=sdg_sample_stack(all_bodies), every_layer=15,
                                               free_generator=True, discrete=False, p1=[1, 1, 1], p2=[.2, .2, .2]),
-                   'sample-grasp-dir': StreamInfo(seed_gen_fn=sdg_sample_grasp_dir(robot, scn.dic_body_info),
+                   'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp_and_dir(robot, scn.dic_body_info),
                                                   every_layer=15,
                                                   free_generator=True, discrete=True,
                                                   p1=[0, 1, 2, 3, 4],
                                                   # p1=[0],
                                                   p2=[5, 5, 5, 5, 5]),
                 #    'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp(robot)),
-                   'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp(robot),
-                                              every_layer=15,
-                                              free_generator=True, discrete=True,
-                                              p1=[0, 1, 2, 3],
-                                              # p1=[0],
-                                              p2=[4, 4, 4, 4]),
+                #    'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp(robot),
+                #                               every_layer=15,
+                #                               free_generator=True, discrete=True,
+                #                               p1=[0, 1, 2, 3],
+                #                               # p1=[0],
+                #                               p2=[4, 4, 4, 4]),
                    'inverse-kinematics': StreamInfo(seed_gen_fn=sdg_ik_grasp(robot, scn.all_bodies), max_queries=1),
                    'plan-free-motion': StreamInfo(seed_gen_fn=sdg_plan_free_motion(robot, all_bodies), max_queries=1),
                    'plan-holding-motion': StreamInfo(seed_gen_fn=sdg_plan_holding_motion(robot, all_bodies), max_queries=1),

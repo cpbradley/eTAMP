@@ -408,6 +408,7 @@ class PlannerUCT(object):
         return
 
     def think(self, num_playout=50, show_tree_nodes=True):
+        self.env.scene_reset_fn()
         self.reset()
         sd = np.random.randint(0, 1000, 1)[0]
         np.random.seed(sd)
