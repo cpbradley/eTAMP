@@ -9,7 +9,7 @@ from utils.pybullet_tools.utils import WorldSaver, connect, dump_world, get_pose
     Point, set_default_camera, stable_z, disconnect, get_bodies, HideOutput, \
     create_box, \
     load_pybullet, step_simulation, Euler, get_links, get_link_info, get_movable_joints, set_joint_positions, \
-    set_camera, get_center_extent, tform_from_pose, attach_viewcone, LockRenderer
+    set_camera, get_center_extent, tform_from_pose, attach_viewcone, LockRenderer, get_aabb
 
 from utils.pybullet_tools.body_utils import draw_frame
 
