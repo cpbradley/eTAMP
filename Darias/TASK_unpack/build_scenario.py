@@ -246,7 +246,7 @@ class Scene_unpack3(object):
                 set_pose(self.bd_body['pegboard'],
                          Pose(Point(x=-0.60, y=0, z=stable_z(self.bd_body['pegboard'], self.bd_body['floor']))))
                 set_pose(self.bd_body['region1'],
-                         Pose(Point(x=0.45, y=0.7, z=stable_z(self.bd_body['region1'], self.bd_body['floor']))))
+                         Pose(Point(x=0.45, y=0.8, z=stable_z(self.bd_body['region1'], self.bd_body['floor']))))
                 set_pose(self.bd_body['region2'],
                          Pose(Point(x=0.05, y=0.8, z=stable_z(self.bd_body['region2'], self.bd_body['floor']))))
 
@@ -295,8 +295,9 @@ class Scene_unpack3(object):
                 #          Pose(Point(x=0.375, y=0.9, z=stable_z(self.bd_body['c1'], self.bd_body['region1']))))
                 # set_pose(self.bd_body['c2'],
                 #          Pose(Point(x=0.32, y=0.9, z=stable_z(self.bd_body['c2'], self.bd_body['region1']))))
+                #         #  Pose(Point(x=0.02, y=0.7, z=stable_z(self.bd_body['c2'], self.bd_body['region1']))))
                 # set_pose(self.bd_body['c3'],
-                #          Pose(Point(x=0.34, y=0.845, z=stable_z(self.bd_body['c3'], self.bd_body['region1']))))
+                #          Pose(Point(x=0.07, y=0.845, z=stable_z(self.bd_body['c3'], self.bd_body['region1']))))
 
                 for key, value in self.init_poses.items():
                     set_pose(self.bd_body[key],
@@ -319,42 +320,42 @@ def sample_block_poses(bd_body, n=3):
 
     options = ((1,1), (1,0), (1,2), (0,2), (2,2), (2,0), (2,1), (0,1))
 
-    dx = np.random.uniform(-0.00, 0.00)
-    dy = np.random.uniform(-0.00, 0.00)
-
-    x1 = get_pose(bd_body['region1'])[0][0] + dx
-    y1 = get_pose(bd_body['region1'])[0][1] + dy
-
-    x_zero = 0.0
-    dx_minus = np.random.uniform(-0.07, -0.055)
-    dx_plus = np.random.uniform(0.055, 0.07)
-
-    y_zero = 0.0
-    dy_minus = np.random.uniform(-0.07, -0.055)
-    dy_plus = np.random.uniform(0.055, 0.07)
-
-    id = np.random.choice(len(options), 2, replace=False)
-    ids = [options[id[0]], options[id[1]]]
-
-    # dx = np.random.uniform(-0.05, 0.05)
-    # dy = np.random.uniform(-0.05, 0.05)
+    # dx = np.random.uniform(-0.00, 0.00)
+    # dy = np.random.uniform(-0.00, 0.00)
 
     # x1 = get_pose(bd_body['region1'])[0][0] + dx
     # y1 = get_pose(bd_body['region1'])[0][1] + dy
 
     # x_zero = 0.0
-    # dx_minus = np.random.uniform(-0.055, -0.055)
-    # dx_plus = np.random.uniform(0.055, 0.055)
+    # dx_minus = np.random.uniform(-0.07, -0.055)
+    # dx_plus = np.random.uniform(0.055, 0.07)
 
     # y_zero = 0.0
-    # dy_minus = np.random.uniform(-0.055, -0.055)
-    # dy_plus = np.random.uniform(0.055, 0.055)
+    # dy_minus = np.random.uniform(-0.07, -0.055)
+    # dy_plus = np.random.uniform(0.055, 0.07)
 
-    # id1 = np.random.choice(8)
-    # id2 = id1 + np.random.choice((-1,1))
-    # if id2 > 7:
-    #     id2 = 0
-    # ids = [options[id1], options[id2]]
+    # id = np.random.choice(len(options), 2, replace=False)
+    # ids = [options[id[0]], options[id[1]]]
+
+    dx = np.random.uniform(-0.03, 0.03)
+    dy = np.random.uniform(-0.03, 0.03)
+
+    x1 = get_pose(bd_body['region1'])[0][0] + dx
+    y1 = get_pose(bd_body['region1'])[0][1] + dy
+
+    x_zero = 0.0
+    dx_minus = np.random.uniform(-0.055, -0.055)
+    dx_plus = np.random.uniform(0.055, 0.055)
+
+    y_zero = 0.0
+    dy_minus = np.random.uniform(-0.055, -0.055)
+    dy_plus = np.random.uniform(0.055, 0.055)
+
+    id1 = np.random.choice(8)
+    id2 = id1 + np.random.choice((-1,1))
+    if id2 > 7:
+        id2 = 0
+    ids = [options[id1], options[id2]]
 
     xs = [x_zero, dx_minus, dx_plus]
     ys = [y_zero, dy_minus, dy_plus]
