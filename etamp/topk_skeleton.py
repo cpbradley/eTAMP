@@ -1110,7 +1110,6 @@ class TopkSkeleton(object):
     def generate_operatorPlan(self, pointer):
         import time
         # print('here')
-        now = time.time()
         if pointer >= self.num_ap:
             return None
         
@@ -1123,13 +1122,9 @@ class TopkSkeleton(object):
                                                                      self.original_problem,
                                                                      self.optms_results, ap_file,
                                                                      self.stream_file)
-        # print(time.time() - now)
-        now = time.time()
 
         fp_files = run_pddl_planner(fp_domain, fp_problem, 1, 'temp/B_fullPlans',
                                     'B_fp', 'Skeleton_SN = ' + str(pointer))
-        # print(time.time() - now)
-        now = time.time()
         if not fp_files:
             print('Failed: in creating fp_files. ap_file = ' + ap_file)
             return None
@@ -1140,38 +1135,22 @@ class TopkSkeleton(object):
         """Find streams for each step of the action plan"""
 
         full_list_stream, full_list_action = get_result_action_list(fp_path)
-        # print(time.time() - now)
-        now = time.time()
 
         op_domain, op_problem = reorder_domain_problem(copy(fp_domain), copy(fp_problem), full_list_stream,
                                                        full_list_action)
-        # print(time.time() - now)
-        now = time.time()
         op_files = run_pddl_planner(op_domain, op_problem, 1, 'temp/C_operatorPlans',
                                     'C_op', 'Skeleton_SN = ' + str(pointer))
-        # print(time.time() - now)
-        now = time.time()
         if not fp_files:
             print('Failed: in creating op_files.')
             return None
         op_path = op_files[0]
 
         streams_for_step, full_list_action = read_streams_with_action(op_path)
-        # print(time.time() - now)
-        now = time.time()
 
         """Text plan -> Object plan"""
         propo_to_action = get_inst_action_mapping()
-        # print(time.time() - now)
-        now = time.time()
         op_plan0, results_for_step = build_op_plan(streams_for_step, full_list_action, inst_to_stream, propo_to_action)
-        # print(time.time() - now)
-        now = time.time()
         op_facts = fill_in_fluents(op_plan0, self.original_init)
-        # print(op_facts)
-        # print(len(op_facts))
-        # print(time.time() - now)
-        now = time.time()
 
         plan_description_path = op_path + '.txt'
         exe_plan_path = op_path + '.pk'
@@ -1179,8 +1158,6 @@ class TopkSkeleton(object):
         # optms_plan = log_fullPlan(op_plan, plan_description_path, exe_plan_path)
 
         op_plan = postprocess_opPlan(op_plan0)
-        # print(time.time() - now)
-        now = time.time()
 
         log_save_opPlan(op_plan, plan_description_path, exe_plan_path)
 
