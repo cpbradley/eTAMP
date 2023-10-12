@@ -17,13 +17,27 @@ DEBUG_FAILURE = False
 class sdg_fn(object):
     def __init__(self, gen_fn, *args, **kwargs):
         self.args = args
-        self.fn = gen_fn(args, kwargs)
+        print(args)
+        print(kwargs)
+        if args:
+            if kwargs:
+                self.fn = gen_fn(*args, **kwargs)
+            else:
+                self.fn = gen_fn(*args)
+        elif kwargs:
+            self.fn = gen_fn(**kwargs)
+        else:
+            self.fn = gen_fn()
+
         # self.dic_body_info = dic_body_info
         # self.robot = robot
         # self.end_effector_link = link_from_name(robot, TOOL_FRAMES[get_body_name(robot)])
 
-    def __call__(self, input_tuple, seed=None):
-        return self.fn(input_tuple, seed=seed)
+    def __call__(self, input_tuple, fluent_tuple=(), seed=None):
+        if fluent_tuple:
+            return self.fn(*input_tuple, fluents=fluent_tuple, seed=seed)
+        else:
+            return self.fn(*input_tuple, seed=seed)
 
 # class sdg_sample_grasp(object):
 #     def __init__(self, robot, dic_body_info=None):
@@ -129,24 +143,54 @@ class sdg_fn(object):
 #     def __call__(self, input_tuple, seed=None):
 #         return self.search(input_tuple, seed=seed)
 
-def get_grasp_gen(robot, add_slanted_grasps=True, add_orthogonal_grasps=True):
+def get_grasp_gen(robot, add_slanted_grasps=False, add_orthogonal_grasps=True):
     # add_slanted_grasps = True
     # I opt to use TSR to define grasp sets but you could replace this
     # with your favorite grasp generator
-    def gen(body):
+    def gen(body, pose, seed=None):
         # Note, add_slanted_grasps should be True when we're using the platform.
+        # body, pose = input
+        print(seed)
         grasp_tsr = pb_robot.tsrs.panda_box.grasp(body,
             add_slanted_grasps=add_slanted_grasps, add_orthogonal_grasps=add_orthogonal_grasps)
         grasps = []
 
         # np.random.shuffle(grasp_tsr)
+        top_grasps = []
         for sampled_tsr in grasp_tsr:
             grasp_worldF = sampled_tsr.sample()
             grasp_objF = np.dot(np.linalg.inv(body.get_base_link_transform()), grasp_worldF)
+            grasp_worldR = grasp_worldF[:3,:3]
+            e_x, e_y, e_z = np.eye(3) # basis vectors
+            is_top_grasp = grasp_worldR[:,2].dot(-e_z) > 0.999
+            is_upside_down_grasp = grasp_worldR[:,2].dot(e_z) > 0.001
+            if is_top_grasp:
+                assert not is_upside_down_grasp
+            
             body_grasp = pb_robot.vobj.BodyGrasp(body, grasp_objF, robot.arm)
             grasps.append((body_grasp,))
             # yield (body_grasp,)
-        return grasps
+            if is_top_grasp:
+                top_grasps.append(body_grasp)
+                # return (body_grasp,)
+        if seed is None:
+            assert False
+            list_ind = [0, 1, 2, 3]
+            idx = random.sample(list_ind, 1)[0]
+        else:
+            idx = np.array([seed]).flatten()[0]
+            if idx > len(top_grasps)-1:
+                top_grasps = top_grasps*2
+        if idx > len(top_grasps):
+            assert False
+        print(top_grasps)
+        print(idx)
+        print(grasp_tsr)
+        print(body)
+        grasp = (top_grasps[int(idx)],)
+        print(grasp)
+        # assert False
+        return grasp
 
     # def gen(body):
     #     dims = body.get_dimensions()
@@ -156,7 +200,7 @@ def get_grasp_gen(robot, add_slanted_grasps=True, add_orthogonal_grasps=True):
 
 
 def get_stable_gen_table(fixed=[]):
-    def gen(body, surface, surface_pos, protation=None):
+    def gen(body, surface, surface_pos=None, protation=None, seed=None):
         """
         Generate a random pose (possibly rotated) on a surface. Rotation
         can be specified for debugging.
@@ -166,33 +210,71 @@ def get_stable_gen_table(fixed=[]):
         dims = body.get_dimensions()
 
         poses = []
-        # These are the pre-chosen regrap locations.
-        for x, y in [(0.4, 0.4)]:
-            np.random.shuffle(rotations)
-            for rotation in rotations:
-                start_pose = body.get_base_link_pose()
+        surface_position = surface.get_pose()[0]
+        while True:
+            # These are the pre-chosen regrap locations.
+            # x = surface_position[0] + np.random.uniform(0.1, 0.3)
+            # y = np.random.uniform(-0.2, 0.2)
+            x = surface_position[0] + 0.2 + random.choice((-0.15, 0.15))
+            y = surface_position[1] + random.choice((-0.15, 0.15))
+            # rotation = random.choice(rotations)
+            yaw = np.random.uniform(-np.pi, np.pi)
+            # rotation = R.from_euler('zyx', [0, 0, 0.])
+            rotation = R.from_euler('zyx', [0, 0, 0.])
+            rotation = body.get_base_link_pose()[1]
 
-                # Get regrasp pose.
-                pose = (ZERO_POS, rotation.as_quat())
-                body.set_base_link_pose(pose)
-                z = pb_robot.placements.stable_z(body, surface)
-                pose = ((x, y, z), rotation.as_quat())
+            start_pose = body.get_base_link_pose()
+            orig_z = start_pose[0][2]
 
-                # Check if regrasp pose is valid.
-                body.set_base_link_pose(pose)
-                if (pose is None) or any(pb_robot.collisions.pairwise_collision(body, b) for b in fixed):
-                    body.set_base_link_pose(start_pose)
-                    continue
+            # pose = (ZERO_POS, rotation.as_quat())
+            pose = (ZERO_POS, rotation)
+            body.set_base_link_pose(pose)
+            z = pb_robot.placements.stable_z(body, surface)
+            # print(z)
+            # print(orig_z)
+            # if z != orig_z:
+            #     if DEBUG_FAILURE: input('Bad z')
+            # pose = ((x, y, z), rotation.as_quat())
+            pose = ((x, y, z), rotation)
+
+            # Check if regrasp pose is valid.
+            body.set_base_link_pose(pose)
+            if (pose is None) or any(pb_robot.collisions.pairwise_collision(body, b) for b in fixed):
                 body.set_base_link_pose(start_pose)
+                'Sampling ...'
+                continue
+            body.set_base_link_pose(start_pose)
 
-                body_pose = pb_robot.vobj.BodyPose(body, pose)
-                poses.append((body_pose,))
-        return poses
+            body_pose = pb_robot.vobj.BodyPose(body, pose)
+            return (body_pose,)
+        # poses.append((body_pose,))
+
+        # for x, y in [(0.4, 0.4)]:
+        #     np.random.shuffle(rotations)
+        #     for rotation in rotations:
+        #         start_pose = body.get_base_link_pose()
+
+        #         # Get regrasp pose.
+        #         pose = (ZERO_POS, rotation.as_quat())
+        #         body.set_base_link_pose(pose)
+        #         z = pb_robot.placements.stable_z(body, surface)
+        #         pose = ((x, y, z), rotation.as_quat())
+
+        #         # Check if regrasp pose is valid.
+        #         body.set_base_link_pose(pose)
+        #         if (pose is None) or any(pb_robot.collisions.pairwise_collision(body, b) for b in fixed):
+        #             body.set_base_link_pose(start_pose)
+        #             continue
+        #         body.set_base_link_pose(start_pose)
+
+        #         body_pose = pb_robot.vobj.BodyPose(body, pose)
+        #         poses.append((body_pose,))
+        # return poses
     return gen
 
 
 def get_stable_gen_home(home_poses, fixed=[]):
-    def gen(body, surface, surface_pos, protation=None):
+    def gen(body, surface, surface_pos, protation=None, seed=None):
         """
         Generate a random pose (possibly rotated) on a surface. Rotation
         can be specified for debugging.
@@ -229,7 +311,7 @@ def get_stable_gen_home(home_poses, fixed=[]):
 
 
 def get_stable_gen_block(fixed=[]):
-    def fn(body, surface, surface_pose, rel_pose):
+    def fn(body, surface, surface_pose, rel_pose, seed=None):
         """
         @param rel_pose: A homogeneous transformation matrix.
         """
@@ -241,9 +323,16 @@ def get_stable_gen_block(fixed=[]):
     return fn
 
 
-def get_ik_fn(robot, fixed=[], num_attempts=4, approach_frame='gripper', backoff_frame='global', use_wrist_camera=False):
-    def fn(body, pose, grasp, return_grasp_q=False, check_robust=False):
-        obstacles = fixed + [body]
+def get_ik_fn(robot, fixed=[], num_attempts=10, approach_frame='gripper', backoff_frame='global', use_wrist_camera=False):
+    def fn(body, pose, grasp, fluents=[], return_grasp_q=False, check_robust=False, seed=None):
+        obstacles = assign_fluent_state(fluents)
+        fluent_names = [o.get_name() for o in obstacles]
+        for o in fixed:
+            if o.get_name() not in fluent_names:
+                obstacles.append(o)
+        
+        obstacles += [body]
+
         obj_worldF = pb_robot.geometry.tform_from_pose(pose.pose)
         grasp_worldF = np.dot(obj_worldF, grasp.grasp_objF)
         grasp_worldR = grasp_worldF[:3,:3]
@@ -260,21 +349,28 @@ def get_ik_fn(robot, fixed=[], num_attempts=4, approach_frame='gripper', backoff
         is_camera_down = grasp_worldR[:,0].dot(-e_z) > 0.999
         is_wrist_too_low = grasp_worldF[2,3] < 0.088/2 + 0.005
 
+        print('Attempting IK')
+
 
         if is_gripper_sideways:
+            print('Sideways')
             return None
         if is_upside_down_grasp:
+            print('Upside Down')
             return None
         if is_camera_down:# and approach_frame == 'gripper':
+            print('Camera?')
             return None
 
         # the gripper is too close to the ground. the wrist of the arm is 88mm
         # in diameter, and it is the widest part of the hand. Include a 5mm
         # clearance
         if not is_top_grasp and is_wrist_too_low:
+            print('Not top')
             return None
         # If the block/gripper is in the storage area, don't use low grasps.
         if grasp_worldF[0,3] < 0.2 and grasp_worldF[2,3] < 0.1:
+            print('Storage')
             return None
 
         if approach_frame == 'gripper':
@@ -292,13 +388,18 @@ def get_ik_fn(robot, fixed=[], num_attempts=4, approach_frame='gripper', backoff
             raise NotImplementedError()
 
         for ax in range(num_attempts):
+            print('Attempt', ax)
+            print(pose.pose)
             q_grasp = robot.arm.ComputeIK(grasp_worldF)
             if (q_grasp is None):
                 if DEBUG_FAILURE: input('No Grasp IK')
                 continue
-            if not robot.arm.IsCollisionFree(q_grasp, obstacles=obstacles, debug=DEBUG_FAILURE):
+            if not robot.arm.IsCollisionFree(q_grasp, self_collisions=False, obstacles=obstacles, debug=DEBUG_FAILURE):
                 if DEBUG_FAILURE: input('Grasp collision')
                 continue
+            else:
+                print('Grasp IK found')
+                print(obstacles)
 
             q_approach = robot.arm.ComputeIK(approach_tform, seed_q=q_grasp)
             if (q_approach is None):
@@ -359,13 +460,14 @@ def get_ik_fn(robot, fixed=[], num_attempts=4, approach_frame='gripper', backoff
                 p.addUserDebugLine(pos, new_y, [0,1,0], lifeTime=lifeTime, physicsClientId=1)
                 p.addUserDebugLine(pos, new_z, [0,0,1], lifeTime=lifeTime, physicsClientId=1)
 
-            command = [pb_robot.vobj.MoveToTouch(robot.arm, q_approach, q_grasp, grasp, body, use_wrist_camera),
+            command = (pb_robot.vobj.MoveToTouch(robot.arm, q_approach, q_grasp, grasp, body, use_wrist_camera),
                        grasp,
-                       pb_robot.vobj.MoveFromTouch(robot.arm, q_backoff, use_wrist_camera=use_wrist_camera)]
+                       pb_robot.vobj.MoveFromTouch(robot.arm, q_backoff, use_wrist_camera=use_wrist_camera))
 
             if return_grasp_q:
                 return (pb_robot.vobj.BodyConf(robot, q_grasp),)
-            return (conf_approach, conf_backoff, command)
+            # return (conf_approach, conf_backoff, command)
+            return (conf_approach, command)
         return None
     return fn
 
@@ -376,54 +478,67 @@ def assign_fluent_state(fluents):
         name, args = fluent[0], fluent[1:]
         if name == 'atpose':
             o, p = args
+            p = p.value
+            o = o.value
             obstacles.append(o)
+            continue
             o.set_base_link_pose(p.pose)
         else:
             raise ValueError(name)
     return obstacles
 
 
-def get_free_motion_gen(robot, fixed=[]):
-    def fn(conf1, conf2, fluents=[]):
+def get_free_motion_gen(robot, fixed=[], seed=None):
+    def fn(conf1, conf2, fluents=[], seed=None):
         obstacles = assign_fluent_state(fluents)
+        # print(fluents)
+        # print(conf1, conf2, fluents, seed)
+        # print(obstacles)
+        # assert False
         fluent_names = [o.get_name() for o in obstacles]
         for o in fixed:
             if o.get_name() not in fluent_names:
                 obstacles.append(o)
 
-        path = robot.arm.birrt.PlanToConfiguration(robot.arm, conf1.configuration, conf2.configuration, obstacles=obstacles)
+        # print(f'robot: {robot.get_custom_limits(robot.arm.joints)}')
+        path = robot.arm.birrt.PlanToConfiguration(robot.arm, conf1.configuration, conf2.configuration, inflate=False, obstacles=obstacles)
 
         if path is None:
             if DEBUG_FAILURE: input('Free motion failed')
             return None
-        command = [pb_robot.vobj.JointSpacePath(robot.arm, path)]
+        command = (pb_robot.vobj.JointSpacePath(robot.arm, path),)
         return (command,)
     return fn
 
 
 def get_holding_motion_gen(robot, fixed=[]):
-    def fn(conf1, conf2, body, grasp, fluents=[]):
+    def fn(conf1, conf2, body, grasp, fluents=[], seed=None):
         obstacles = assign_fluent_state(fluents)
         fluent_names = [o.get_name() for o in obstacles]
         for o in fixed:
             if o.get_name() not in fluent_names:
                 obstacles.append(o)
+        print('jerererer')
+        print(fluents)
+        print(conf1, conf2, fluents, seed)
+        print(obstacles)
 
         old_q = robot.arm.GetJointValues()
         orig_pose = body.get_base_link_pose()
         robot.arm.SetJointValues(conf1.configuration)
         robot.arm.Grab(body, grasp.grasp_objF)
 
-        path = robot.arm.birrt.PlanToConfiguration(robot.arm, conf1.configuration, conf2.configuration, obstacles=obstacles)
+        path = robot.arm.birrt.PlanToConfiguration(robot.arm, conf1.configuration, conf2.configuration, obstacles=obstacles, inflate=False)
 
         robot.arm.Release(body)
         body.set_base_link_pose(orig_pose)
         robot.arm.SetJointValues(old_q)
 
         if path is None:
+            print(obstacles)
             if DEBUG_FAILURE: input('Holding motion failed')
             return None
-        command = [pb_robot.vobj.JointSpacePath(robot.arm, path)]
+        command = (pb_robot.vobj.JointSpacePath(robot.arm, path),)
         return (command,)
     return fn
 

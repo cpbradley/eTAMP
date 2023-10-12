@@ -1,6 +1,7 @@
 import os
 import shutil
-import pickle
+# import pickle
+import dill as pickle
 from datetime import datetime
 from collections import defaultdict, namedtuple
 

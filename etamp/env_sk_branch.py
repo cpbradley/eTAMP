@@ -7,13 +7,15 @@ from .stream import is_active_arg
 from .pddlstream.language.object import Object, OptimisticObject, EXE_Object, EXE_OptimisticObject, get_hash
 from sklearn.metrics import pairwise_distances_argmin_min
 from .topk_skeleton import EXE_Action, EXE_Stream, remap_action_args
-from utils.pybullet_tools.utils import get_center_extent, WorldSaver
+from utils.pybullet_tools.utils import get_center_extent#, WorldSaver
+from pb_robot.utils import WorldSaver
 from utils.pybullet_tools.kuka_primitives3 import GraspDirection
 from .decision_sampler import DecisionInfo, SamplerContinuous, SamplerDiscrete, format_continous
 from .constraint_graph import Constraint
 from collections import defaultdict
 import networkx as nx
 import time
+import inspect
 
 from BO.bo_one_piece import suggest_from_MCTS
 
@@ -724,7 +726,14 @@ class SkeletonEnv(object):
         seed_gen_fn = self.get_op_info(stream).seed_gen_fn
 
         now = time.time()
-        output_tuple = seed_gen_fn(input_tuple=input_tuple, seed=seed)  # tuple, can be None
+        if inspect.signature(seed_gen_fn).parameters.get('fluent_tuple'):
+            output_tuple = seed_gen_fn(input_tuple=input_tuple, fluent_tuple=fluent_tuple, seed=seed)  # tuple, can be None
+        else:
+            output_tuple = seed_gen_fn(input_tuple=input_tuple, seed=seed)  # tuple, can be None
+        # try:
+        #     output_tuple = seed_gen_fn(input_tuple=input_tuple, fluent_tuple=fluent_tuple, seed=seed)  # tuple, can be None
+        # except:
+        #     output_tuple = seed_gen_fn(input_tuple=input_tuple, seed=seed)  # tuple, can be None
         elapsed_time = time.time() - now
 
         if stream.name == 'plan-free-motion':

@@ -3,7 +3,8 @@ from copy import deepcopy, copy
 import numpy as np
 import scipy.spatial.distance as spdist
 from collections import namedtuple
-import pickle as pk
+# import pickle as pk
+import dill as pk
 from .constraint_graph import Constraint, update_constraint_dict, get_op_to_decision, rename_stream, update_constraint
 from collections import defaultdict
 from BO.fit_suggestion import suggest_from_CP

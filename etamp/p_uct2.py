@@ -11,7 +11,7 @@ from .pddlstream.language.object import Object, OptimisticObject, EXE_Object, EX
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.drawing.nx_pydot import graphviz_layout
-import pickle as pk
+import dill as pk
 from .topk_skeleton import EXE_Action, EXE_Stream
 from .tree_node2 import Node
 
@@ -222,6 +222,7 @@ class PlannerUCT(object):
 
     def save_nodes(self):
         with open('tree_nodes.pk', 'wb') as f:
+            pass
             pk.dump((self.edges, self.id_to_node), f)
 
     def update_graph(self, cur_node, next_node):
