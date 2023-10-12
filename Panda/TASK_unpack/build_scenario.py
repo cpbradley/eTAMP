@@ -15,7 +15,11 @@ import pb_robot
 
 from copy import copy
 
-from tamp.misc import setup_panda_world, get_pddl_block_lookup
+from tamp.misc import setup_panda_world, get_pddl_block_lookup, load_blocks, load_eval_block
+import block_utils
+from block_utils import get_adversarial_blocks, rotation_group, ZERO_POS, \
+        Quaternion, get_rotated_block, Pose, add_noise, \
+        Environment, Position, World, all_rotations
                     #   get_pddlstream_info, print_planning_problem, \
                     #   ExecuteActions, ExecutionFailure, get_ik_stream
 
@@ -319,7 +323,7 @@ from tamp.misc import setup_panda_world, get_pddl_block_lookup
 
 
 class Scene_unpack_pb(object):
-    def __init__(self):
+    def __init__(self, bodies=3):
         # with pb_robot.helper.HideOutput():
         #     with pb_robot.utils.LockRenderer():
                 # self.arm_left = load_pybullet("../darias_description/urdf/darias_L_primitive_collision.urdf",
@@ -387,10 +391,6 @@ class Scene_unpack_pb(object):
 
 
         # from agents.panda_agent import PandaAgent
-        from tamp.misc import load_blocks, load_eval_block
-        from block_utils import get_adversarial_blocks, rotation_group, ZERO_POS, \
-                Quaternion, get_rotated_block, Pose, add_noise, \
-                Environment, Position, World
 
         # train_blocks_fname = '/catkin_ws/src/latent_feasibility/learning/domains/towers/train_sim_block_set_10.pkl'
         train_blocks_fname = '/catkin_ws/src/latent_feasibility/learning/domains/towers/grasping_block_set_robot.pkl'
@@ -399,11 +399,11 @@ class Scene_unpack_pb(object):
         # import os
         # cwd = os.getcwd()
         # os.chdir('/catkin_ws/src/latent_feasibility')
-        block_id = 16
-        # blocks = load_blocks(train_blocks_fname=train_blocks_fname)
-        blocks = load_eval_block(
-            blocks_fname=train_blocks_fname,
-            eval_block_id=block_id)
+        # block_id = 16
+        blocks = load_blocks(train_blocks_fname=train_blocks_fname, num_blocks=20)
+        # blocks = load_eval_block(
+        #     blocks_fname=train_blocks_fname,
+        #     eval_block_id=block_id)
         # os.chdir('/catkin_ws/src/latent_feasibility')
         # print(blocks)
         # assert False
@@ -428,69 +428,63 @@ class Scene_unpack_pb(object):
         # print(blocks)
         # planning_blocks = blocks[:num_blocks]
         print(blocks)
-        # self.init_poses = sample_block_poses(self.bd_body)
-        # agent = PandaAgent(blocks)
-        agent = PandaAgent(
-            blocks=blocks,
-            block_init_xy_poses=[
+        self.num_bodies = bodies
+        blocks = [blocks[i] for i in [17, 8, 16]]
+        init_poses = [
                 Pose(
                     Position(0.4, 0.0, 0.0),
                     Quaternion(0.0, 0.0, 0.0, 1.0)
+                ),
+                Pose(
+                    Position(0.4, 0.2, 0.0),
+                    Quaternion(0.0, 0.0, 0.0, 1.0)
+                ),
+                Pose(
+                    Position(0.4, -0.2, 0.0),
+                    Quaternion(0.0, 0.0, 0.0, 1.0)
                 )
             ]
+
+        blocks = [blocks[i] for i in range(bodies)]
+        init_poses = [init_poses[i] for i in range(bodies)]
+        # blocks = [blocks[i] for i in [16]]
+        # agent = PandaAgent(blocks)
+        agent = PandaAgent(
+            blocks=blocks,
+            block_init_xy_poses=init_poses
         )
         self.panda_agent = agent
         self.arm_left = agent.robot
+        # print(self.arm_left.get_custom_limits())
+        # assert False
         self.robots = [self.arm_left]
         self.movable_bodies = self.panda_agent.pddl_blocks
         self.regions = [self.panda_agent.table]
         self.sensors = []
-        # os.chdir(cwd)
         self.bd_body = {
             'region1': self.regions[0],
             'region2': self.regions[0],
             'c1': self.movable_bodies[0],
-            'c2': self.movable_bodies[0],
-            'c3': self.movable_bodies[0]
+            'c2': self.movable_bodies[min(bodies-1, 1)],
+            'c3': self.movable_bodies[min(bodies-1, 2)]
         }
+
         self.reset()
 
     def reset(self):
 
         self.panda_agent.reset_world()
-        # with pb_robot.helper.HideOutput():
-        #     with pb_robot.utils.LockRenderer():
-        #         # initial_jts = np.array([0.8, 0.75, 0.4, -1.8, 0.8, -1.5, 0])
-        #         # initial_jts = np.array([0.1, 1.4, 1, 1.7, 0, 0, 0])
-        #         # config_left = BodyConf(self.arm_left, initial_jts)
-        #         # config_left.assign()
-
-        #         # movable_door = get_movable_joints(self.bd_body['cabinet_shelf'])
-        #         # set_joint_positions(self.bd_body['cabinet_shelf'], movable_door, [-0.])
-
-        #         # set_pose(self.bd_body['c1'],
-        #         #          Pose(Point(x=0.375, y=0.9, z=stable_z(self.bd_body['c1'], self.bd_body['region1']))))
-        #         # set_pose(self.bd_body['c2'],
-        #         #          Pose(Point(x=0.32, y=0.9, z=stable_z(self.bd_body['c2'], self.bd_body['region1']))))
-        #         #         #  Pose(Point(x=0.02, y=0.7, z=stable_z(self.bd_body['c2'], self.bd_body['region1']))))
-        #         # set_pose(self.bd_body['c3'],
-        #         #          Pose(Point(x=0.07, y=0.845, z=stable_z(self.bd_body['c3'], self.bd_body['region1']))))
-
-        #         for key, value in self.init_poses.items():
-        #             pb_robot.body.set_pose(self.bd_body[key],
-        #                     pb_robot.geometry.Pose(pb_robot.geometry.Point(x=value[0], y=value[1], z=pb_robot.placements.stable_z(self.bd_body[key], self.bd_body['region1']))))
-
-        #         pb_robot.utils.set_camera(150, -35, 1.6, pb_robot.geometry.Point(-0.1, 0.1, -0.1))
+        # self.panda_agent.plan()
     
         
     def get_elemetns(self):
         self.reset()
-        return self.arm_left, self.movable_bodies, self.regions
+        return self.arm_left, self.movable_boxy_pose.pos.dies, self.regions
 
 class PandaAgent(object):
     def __init__(self, blocks, noise=0.00005, block_init_xy_poses=None,
                 teleport=False, use_platform=False, use_vision=False, real=False,
-                use_action_server=False, use_learning_server=False):
+                use_action_server=False, use_learning_server=False, platform_xy_pose=None):
         """
         Build the Panda world in PyBullet and set up the PDDLStream solver.
         The Panda world should in include the given blocks as well as a
@@ -521,9 +515,12 @@ class PandaAgent(object):
         self._planning_client_id = pb_robot.utils.connect(use_gui=False)
         self.plan()
         pb_robot.utils.set_default_camera()
-        self.robot = pb_robot.panda.Panda()
+        self.robot = pb_robot.panda.Panda(inflate_hand=True)
+        # assert False
+        # self.robot = pb_robot.panda.Panda(inflate_hand=False)
         self.robot.arm.hand.Open()
         self.belief_blocks = blocks
+
 
         self.pddl_blocks, self.platform_table, self.platform_leg, self.table, self.frame, self.wall = setup_panda_world(
             self.robot,
@@ -531,20 +528,56 @@ class PandaAgent(object):
             block_init_xy_poses,
             use_platform=use_platform
         )
+
+        bd_body = {
+            'region1': self.table,
+            'region2': self.table,
+            'c1': self.pddl_blocks[0],
+            'c2': self.pddl_blocks[min(len(self.pddl_blocks)-1, 1)],
+            'c3': self.pddl_blocks[min(len(self.pddl_blocks)-1, 2)],
+        }
+
+        if block_init_xy_poses is None or True:
+            block_init_xy_poses = sample_block_poses(bd_body)
+
+            for i, (block, xy_pose_key) in enumerate(zip(self.pddl_blocks, block_init_xy_poses)):
+
+                dimensions = np.array(block.get_dimensions()).reshape((3, 1))
+                for rot in all_rotations():
+                    rot_dims = np.abs(rot.as_matrix()@dimensions)[:, 0]
+                    if rot_dims[2] >= rot_dims[0] and rot_dims[2] >= rot_dims[1]:
+                        xy_pose = block_init_xy_poses[xy_pose_key]
+                        print(xy_pose)
+                        x = xy_pose[0]
+                        y = xy_pose[1]
+                        z = pb_robot.placements.stable_z(block, bd_body['region1'])
+                        orn = Quaternion(0.0, 0.0, 0.0, 1.0)
+                        orn = rot.as_quat()
+                        full_pose = block_utils.Pose(block_utils.Position(x,
+                                                y,
+                                                z),
+                                        orn)
+                        block.set_base_link_pose(full_pose)
+                        z = pb_robot.placements.stable_z(block, self.table)
+                        print(z)
+                        block.set_base_link_point([x, y, z])
+                        break
+
         self.fixed = [self.platform_table, self.platform_leg, self.table, self.frame, self.wall]
         self.pddl_block_lookup = get_pddl_block_lookup(blocks, self.pddl_blocks)
 
         self.orig_joint_angles = self.robot.arm.GetJointValues()
         self.orig_block_poses = [b.get_base_link_pose() for b in self.pddl_blocks]
+        print(self.orig_block_poses)
 
         # Setup PyBullet instance that only visualizes plan execution. State needs to match the planning instance.
-        import block_utils
         poses = [b.get_base_link_pose() for b in self.pddl_blocks]
         poses = [block_utils.Pose(block_utils.Position(*p[0]), block_utils.Quaternion(*p[1])) for p in poses]
-        self._execution_client_id = pb_robot.utils.connect(use_gui=True)
+        # self._execution_client_id = pb_robot.utils.connect(use_gui=True)
+        self._execution_client_id = pb_robot.utils.connect(use_gui=False)
         self.execute()
         pb_robot.utils.set_default_camera()
-        self.execution_robot = pb_robot.panda.Panda()
+        self.execution_robot = pb_robot.panda.Panda(inflate_hand=True)
         self.execution_robot.arm.hand.Open()
         setup_panda_world(
             self.execution_robot,
@@ -552,6 +585,7 @@ class PandaAgent(object):
             poses,
             use_platform=use_platform
         )
+
 
         # Set up ROS plumbing if using features that require it
         if self.use_vision or self.use_action_server or real:
@@ -677,7 +711,80 @@ class PandaAgent(object):
         self.execution_robot.arm.SetJointValues(self.orig_joint_angles)
         for bx, b in enumerate(self.pddl_blocks):
             b.set_base_link_pose(self.orig_block_poses[bx])
+        # self.plan()
         print("Done")
+
+    def _update_block_poses(self, find_moved=False):
+        """ Use the global world cameras to update the positions of the blocks """
+        try:
+            resp = self._get_block_poses_wrist()
+            named_poses = resp.poses
+        except:
+            import sys
+            print('Service call to get block poses failed. Exiting.')
+            sys.exit()
+
+        n_found = 0
+        for pddl_block_name, pddl_block in self.pddl_block_lookup.items():
+            for named_pose in named_poses:
+                if named_pose.block_id == pddl_block_name.split('_')[-1]:
+                    pose = named_pose.pose.pose
+                    # Skip changes the pose of objects in storage.
+                    if pose.position.x < 0.05:
+                        continue
+                    n_found += 1
+                    position = (pose.position.x, pose.position.y, pose.position.z)
+                    orientation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)
+                    self.execute()
+                    pddl_block.set_base_link_pose((position, orientation))
+                    if not self.use_action_server:
+                        self.plan()
+                        pddl_block.set_base_link_pose((position, orientation))
+
+        if find_moved and n_found != len(self.moved_blocks):
+            input('Could not find all the moved blocks. Please reposition blocks outside of the camera view and hit enter to continue.')
+            self._update_block_poses(find_moved=True)
+            return
+
+        # After loading from vision, objects may be in collision. Resolve this.
+        for _, pddl_block in self.pddl_block_lookup.items():
+            if pb_robot.collisions.body_collision(pddl_block, self.table):
+                print('Collision with table and block:', pddl_block.readableName)
+                position, orientation = pddl_block.get_base_link_pose()
+                stable_z = pb_robot.placements.stable_z(pddl_block, self.table)
+                position = (position[0], position[1], stable_z)
+                self.execute()
+                pddl_block.set_base_link_pose((position, orientation))
+                self.plan()
+                pddl_block.set_base_link_pose((position, orientation))
+
+        # Resolve from low to high blocks.
+        current_poses = [b.get_base_link_pose() for b in self.pddl_blocks]
+        block_ixs = range(len(self.pddl_blocks))
+        block_ixs = sorted(block_ixs, key=lambda ix: current_poses[ix][0][2], reverse=False)
+        for ix in range(len(block_ixs)):
+            bottom_block = self.pddl_blocks[block_ixs[ix]]
+            for jx in range(ix+1, len(block_ixs)):
+                top_block = self.pddl_blocks[block_ixs[jx]]
+
+                dist_moved = 0
+                while pb_robot.collisions.body_collision(bottom_block, top_block):
+                    print('Collision with bottom %s and top %s:' % (bottom_block.readableName, top_block.readableName))
+                    position, orientation = top_block.get_base_link_pose()
+                    stable_z = position[2] + 0.001
+                    dist_moved += 0.001
+                    if self.real and dist_moved > 0.04:
+                        print(f"Found blocks {bottom_block} and {top_block} in collision")
+                        input("Manually move the blocks and press Enter to continue")
+                        self._update_block_poses(find_moved=False)
+                        return
+                    position = (position[0], position[1], stable_z)
+                    self.execute()
+                    top_block.set_base_link_pose((position, orientation))
+                    self.plan()
+                    top_block.set_base_link_pose((position, orientation))
+
+        return (position, orientation)
 
 
 def sample_platform_poses(bd_body, n=3):
@@ -709,16 +816,22 @@ def sample_block_poses(bd_body, n=3):
     dx = np.random.uniform(-0.03, 0.03)
     dy = np.random.uniform(-0.03, 0.03)
 
-    x1 = get_pose(bd_body['region1'])[0][0] + dx
-    y1 = get_pose(bd_body['region1'])[0][1] + dy
+    dx += 0.2
+
+    x1 = bd_body['region1'].get_pose()[0][0] + dx
+    y1 = bd_body['region1'].get_pose()[0][1] + dy
 
     x_zero = 0.0
     dx_minus = np.random.uniform(-0.055, -0.055)
     dx_plus = np.random.uniform(0.055, 0.055)
+    dx_minus += -0.007
+    dx_plus += 0.007
 
     y_zero = 0.0
     dy_minus = np.random.uniform(-0.055, -0.055)
     dy_plus = np.random.uniform(0.055, 0.055)
+    dy_minus += -0.007
+    dy_plus += 0.007
 
     id1 = np.random.choice(8)
     id2 = id1 + np.random.choice((-1,1))

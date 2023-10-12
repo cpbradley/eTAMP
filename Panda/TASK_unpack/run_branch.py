@@ -9,12 +9,13 @@ import pickle as pk
 import time
 from etamp.actions import ActionInfo
 from etamp.stream import StreamInfo
-from utils.pybullet_tools.panda_primitives import sdg_fn
+from utils.pybullet_tools.panda_primitives import sdg_fn, get_stable_gen_table, get_grasp_gen, get_stable_gen_home, \
+    get_stable_gen_block, get_ik_fn, get_free_motion_gen, get_holding_motion_gen
 from utils.pybullet_tools.kuka_primitives3 import Command, sdg_sample_place, sdg_sample_grasp_dir, \
     sdg_sample_grasp, sdg_ik_grasp, sdg_plan_free_motion, \
     sdg_plan_holding_motion, sdg_sample_stack, Register
 from utils.pybullet_tools.utils import WorldSaver, connect, get_pose, set_pose, get_configuration, is_placement, \
-    disconnect, get_bodies
+    disconnect
 import pb_robot
 from pb_robot.vobj import BodyPose, BodyConf
 
@@ -29,8 +30,9 @@ from .build_scenario import Scene_unpack_pb
 
 
 def get_fixed(robot, movable):
-    rigid = [body for body in get_bodies() if body != robot]
-    fixed = [body for body in rigid if body not in movable]
+    rigid = [body for body in pb_robot.utils.get_bodies() if body.id != robot.id]
+    movable_ids = [m.id for m in movable]
+    fixed = [body for body in rigid if body.id not in movable_ids]
     return fixed
 
 
@@ -75,9 +77,17 @@ def move_cost_fn(*args):
     """
     :param c: Commands
     """
-    c = args[-1]  # objects
-    [t] = c.value.body_paths
-    distance = t.distance()
+    cs = args[-1]  # objects
+    # [t] = c.value.body_paths
+    # [t] = c.value.path
+    distance = 0
+    for c in cs.value:
+        print(c)
+        print(type(c))
+        distance_fn = pb_robot.planning.get_distance_fn(c.manip, c.manip.joints)
+        for q1, q2 in zip(c.path[:-1], c.path[1:]):
+            distance += distance_fn(q1, q2)
+    # distance = t.distance()
     return distance + 0.1
 
 
@@ -121,14 +131,17 @@ def get_update_env_reward_fn(scn, action_info):
             for patom in action.add_effects:
                 if patom.name.lower() == "AtConf".lower():
                     body_config = patom.args[0].value
-                    body_config.assign()
+                    # body_config.assign()
+                    # body_config.configuration.assign()
+                    body_config.manip.arm.SetJointValues(body_config.configuration)
                 elif patom.name.lower() == "AtPose".lower():
                     body_pose = patom.args[1].value
-                    body_pose.assign()
+                    # body_pose.assign()
+                    body_pose.body.set_base_link_pose(body_pose.pose)
                 elif patom.name.lower() == "AtGrasp".lower():
                     body_grasp = patom.args[1].value
-                    attachment = body_grasp.attachment()
-                    attachment.assign()
+                    # attachment = body_grasp.attachment()
+                    # attachment.assign()
 
         if cost is False:
             return None
@@ -158,7 +171,8 @@ def get_pddlstream_problem(scn):
     domain_pddl = read(get_file_path(__file__, 'pddl/domain.pddl'))
     stream_pddl = read(get_file_path(__file__, 'pddl/stream.pddl'))
 
-    conf = BodyConf(robot, robot.get_configuration())
+    # conf = BodyConf(robot, robot.get_configuration())
+    conf = BodyConf(robot, robot.arm.GetJointValues())
     init = [('CanMove',),
             ('CanPick',),
             ('IsConf', conf),
@@ -167,9 +181,11 @@ def get_pddlstream_problem(scn):
             ('AllowLocate',), ]
 
     fixed = get_fixed(robot, movable)
+
     all_bodies = list(set(movable) | set(fixed))
     for body in movable:
-        pose = BodyPose(body, body.get_pose())
+        # pose = BodyPose(body, body.get_pose())
+        pose = BodyPose(body, body.get_base_link_pose())
         init += [('Graspable', body),
                  ('IsPose', body, pose),
                  ('AtPose', body, pose)]
@@ -187,7 +203,8 @@ def get_pddlstream_problem(scn):
 
     goal = ('and',
             ('AtConf', conf),
-            ('On', scn.bd_body['c1'], scn.bd_body['region2']),
+            ('Holding', scn.bd_body['c1']),
+            # ('On', scn.bd_body['c1'], scn.bd_body['region2']),
             )
 
     # stream_info = {'sample-place': StreamInfo(seed_gen_fn=sdg_sample_place(all_bodies), every_layer=15,
@@ -218,9 +235,10 @@ def get_pddlstream_problem(scn):
     #     'plan-free-motion': from_fn(primitives.get_free_motion_gen(robot, fixed)),
     #     'plan-holding-motion': from_fn(primitives.get_holding_motion_gen(robot, fixed)),
     # }
+    import tamp
     stream_info = {'sample-place': StreamInfo(seed_gen_fn=sdg_fn(get_stable_gen_table, all_bodies), every_layer=15,
                                               free_generator=True, discrete=False, p1=[1, 1, 1], p2=[.2, .2, .2]),
-                   'sample-stack': StreamInfo(seed_gen_fn=sdg_fn(sample_pose_table, all_bodies), every_layer=15,
+                   'sample-stack': StreamInfo(seed_gen_fn=sdg_fn(get_stable_gen_table, all_bodies), every_layer=15,
                                               free_generator=True, discrete=False, p1=[1, 1, 1], p2=[.2, .2, .2]),
                 #    'sample-grasp-dir': StreamInfo(seed_gen_fn=sdg_sample_grasp_dir(robot, scn.dic_body_info),
                 #                                   every_layer=15,
@@ -228,15 +246,15 @@ def get_pddlstream_problem(scn):
                 #                                   p1=[2],
                 #                                   p2=[10]),
                 #    'sample-grasp': StreamInfo(seed_gen_fn=sdg_sample_grasp(robot, scn.dic_body_info)),
-                   'sample-grasp': StreamInfo(seed_gen_fn=sdg_fn(get_grasp_gen, robot, scn.dic_body_info),
+                   'sample-grasp': StreamInfo(seed_gen_fn=sdg_fn(get_grasp_gen, robot),
                                               every_layer=15,
                                               free_generator=True, discrete=True,
                                               p1=[0, 1, 2, 3],
                                               # p1=[0],
                                               p2=[4, 4, 4, 4]),
-                   'inverse-kinematics': StreamInfo(seed_gen_fn=sdg_fn(get_ik_fn, robot, scn.all_bodies), max_queries=1),
-                   'plan-free-motion': StreamInfo(seed_gen_fn=sdg_fn(get_free_motion_gen, robot, all_bodies), max_queries=1),
-                   'plan-holding-motion': StreamInfo(seed_gen_fn=sdg_fn(get_holding_motion_gen, robot, all_bodies), max_queries=1),
+                   'inverse-kinematics': StreamInfo(seed_gen_fn=sdg_fn(get_ik_fn, robot, fixed), max_queries=1),
+                   'plan-free-motion': StreamInfo(seed_gen_fn=sdg_fn(get_free_motion_gen, robot, fixed), max_queries=1),
+                   'plan-holding-motion': StreamInfo(seed_gen_fn=sdg_fn(get_holding_motion_gen, robot, fixed), max_queries=1),
                    }
     action_info = {'move_free': ActionInfo(optms_cost_fn=get_const_cost_fn(5), cost_fn=move_cost_fn),
                    'move_holding': ActionInfo(optms_cost_fn=get_const_cost_fn(5), cost_fn=move_cost_fn),
